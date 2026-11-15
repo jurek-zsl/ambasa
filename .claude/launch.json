@@ -4,7 +4,7 @@
     {
       "name": "web",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["--filter", "@artigram/web", "dev"],
+      "runtimeArgs": ["--filter", "@ambasa/web", "dev"],
       "port": 3000
     }
   ]

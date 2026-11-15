@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@artigram/shared"],
+  transpilePackages: ["@ambasa/shared"],
 };
 
 export default nextConfig;

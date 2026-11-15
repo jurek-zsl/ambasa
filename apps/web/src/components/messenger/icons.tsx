@@ -89,6 +89,22 @@ export const Icon = {
       <path d="M15.5 8.5V6.5a2 2 0 00-2-2h-7a2 2 0 00-2 2v7a2 2 0 002 2h2" />
     </Svg>
   ),
+  pause: () => (
+    <Svg>
+      <path d="M9 5v14M15 5v14" />
+    </Svg>
+  ),
+  play: () => (
+    <Svg>
+      <path d="M8 5.5l11 6.5-11 6.5z" />
+    </Svg>
+  ),
+  eye: () => (
+    <Svg>
+      <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+      <circle cx="12" cy="12" r="3" />
+    </Svg>
+  ),
   logout: () => (
     <Svg>
       <path d="M14 4.5h3.5a2 2 0 012 2v11a2 2 0 01-2 2H14" />
@@ -97,17 +113,9 @@ export const Icon = {
   ),
 };
 
+/** There is no Ambasa logo yet, so the name itself is the mark. */
 export function Mark() {
-  return (
-    <div className="mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round">
-        <circle cx="7" cy="8" r="2.4" />
-        <circle cx="17" cy="8" r="2.4" />
-        <circle cx="12" cy="17" r="2.4" />
-        <path d="M9.2 8.8l1.6 6M14.8 8.8l-1.6 6M9.4 8h5.2" />
-      </svg>
-    </div>
-  );
+  return <span className="wordmark">Ambasa</span>;
 }
 
 export function Verified() {

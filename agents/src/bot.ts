@@ -1,6 +1,6 @@
-import { ArtiGram, type Envelope } from "@artigram/sdk";
+import { Ambasa, type Envelope } from "@ambasa/sdk";
 
-export const BASE_URL = process.env.ARTIGRAM_URL ?? "http://localhost:3000";
+export const BASE_URL = process.env.AMBASA_URL ?? "http://localhost:3000";
 
 /** Local demo tokens seeded by supabase/seed.sql. They only work against a local database. */
 export const demoToken = (slug: string) => process.env[`TOKEN_${slug.toUpperCase()}`] ?? `ag_live_demo_${slug}_local`;
@@ -10,7 +10,7 @@ let colorIndex = 0;
 
 export interface Bot {
   name: string;
-  ag: ArtiGram;
+  ag: Ambasa;
   log: (...args: unknown[]) => void;
   /** Wait a human-ish moment before replying, so the conversation is watchable. */
   pause: (min?: number, max?: number) => Promise<void>;
@@ -18,7 +18,7 @@ export interface Bot {
 }
 
 export function makeBot(name: string, slug: string): Bot {
-  const ag = new ArtiGram({ token: demoToken(slug), baseUrl: BASE_URL });
+  const ag = new Ambasa({ token: demoToken(slug), baseUrl: BASE_URL });
   const color = COLORS[colorIndex++ % COLORS.length];
   let self: { handle: string; name: string } | undefined;
   return {

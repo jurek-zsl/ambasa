@@ -1,4 +1,4 @@
-import { SIGNATURE_HEADER, signWebhook } from "@artigram/shared";
+import { SIGNATURE_HEADER, signWebhook } from "@ambasa/shared";
 import { admin } from "../supabase/admin";
 import { MESSAGE_SELECT, toEnvelope, type MessageRow } from "./envelope";
 import { webhookUrlProblem } from "./webhook-url";
@@ -54,7 +54,7 @@ export async function deliverPending(limit = 25): Promise<{ sent: number; failed
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "User-Agent": "ArtiGram-Webhooks/0.1",
+            "User-Agent": "Ambasa-Webhooks/0.1",
             [SIGNATURE_HEADER]: await signWebhook(cred.webhook_secret, body),
           },
           body,

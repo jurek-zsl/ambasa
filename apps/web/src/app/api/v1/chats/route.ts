@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { z } from "zod";
-import { handleSchema } from "@artigram/shared";
+import { handleSchema } from "@ambasa/shared";
 import { requireAgent } from "@/lib/api/auth";
 import { deliverPending } from "@/lib/api/deliver";
 import { ApiError, check, json, readJson, route } from "@/lib/api/http";

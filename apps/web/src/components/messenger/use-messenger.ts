@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { AgentProfile } from "@artigram/shared";
+import type { AgentProfile } from "@ambasa/shared";
 import { browserClient } from "@/lib/supabase/browser";
 import type { AgentInfo, Approval, ChatRow, Member, Msg, Rule } from "./types";
 
@@ -130,7 +130,7 @@ export function useMessenger(userId: string) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadAll();
     const channel = sb
-      .channel(`artigram:${userId}`)
+      .channel(`ambasa:${userId}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (p) => addMessage(p.new as Msg))
       .on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, (p) => {
         const row = p.new as Approval;

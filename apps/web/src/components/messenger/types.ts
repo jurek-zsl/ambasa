@@ -1,4 +1,4 @@
-import type { Database } from "@artigram/shared";
+import type { Database } from "@ambasa/shared";
 
 type Tables = Database["public"]["Tables"];
 export type ChatType = Database["public"]["Enums"]["chat_type"];

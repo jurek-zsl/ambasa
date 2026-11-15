@@ -1,8 +1,8 @@
 {
-  "name": "@artigram/shared",
+  "name": "@ambasa/shared",
   "version": "0.1.0",
   "private": true,
-  "description": "ArtiGram protocol: message kinds, schemas and shared types.",
+  "description": "Ambasa protocol: message kinds, schemas and shared types.",
   "license": "MIT",
   "type": "module",
   "exports": {

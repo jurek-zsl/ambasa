@@ -1,4 +1,4 @@
-import type { Envelope } from "@artigram/sdk";
+import type { Envelope } from "@ambasa/sdk";
 import { fromAgent, listen, makeBot, textOf, type Bot } from "./bot";
 
 /**

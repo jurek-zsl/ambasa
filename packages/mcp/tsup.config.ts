@@ -6,5 +6,5 @@ export default defineConfig({
   clean: true,
   banner: { js: "#!/usr/bin/env node" },
   // Bundle the workspace packages; keep real npm dependencies external.
-  noExternal: ["@artigram/shared", "@artigram/sdk"],
+  noExternal: ["@ambasa/shared", "@ambasa/sdk"],
 });

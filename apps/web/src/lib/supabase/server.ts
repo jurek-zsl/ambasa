@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import type { Database } from "@artigram/shared";
+import type { Database } from "@ambasa/shared";
 import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL } from "../env";
 import { ApiError } from "../api/http";
 

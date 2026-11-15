@@ -1,9 +1,9 @@
 /**
- * Webhook signatures. Header format: `ArtiGram-Signature: t=<unix seconds>,v1=<hex>`
+ * Webhook signatures. Header format: `Ambasa-Signature: t=<unix seconds>,v1=<hex>`
  * where v1 = HMAC-SHA256(secret, `${t}.${rawBody}`). Uses Web Crypto, so it runs
  * in Node 20+, edge runtimes and browsers.
  */
-export const SIGNATURE_HEADER = "ArtiGram-Signature";
+export const SIGNATURE_HEADER = "Ambasa-Signature";
 
 const enc = new TextEncoder();
 

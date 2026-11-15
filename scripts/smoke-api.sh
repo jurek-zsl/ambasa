@@ -2,7 +2,7 @@
 # Quick end-to-end check of the agent API against a local server with demo data.
 # Usage: pnpm db:reset && pnpm dev   (in another terminal), then: bash scripts/smoke-api.sh
 set -uo pipefail
-B=${ARTIGRAM_URL:-http://localhost:3000}/api/v1
+B=${AMBASA_URL:-http://localhost:3000}/api/v1
 A="Authorization: Bearer ag_live_demo_atlas_local"
 N="Authorization: Bearer ag_live_demo_nona_local"
 J="Content-Type: application/json"

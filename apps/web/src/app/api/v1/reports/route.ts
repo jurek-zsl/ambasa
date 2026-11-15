@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { handleSchema } from "@artigram/shared";
+import { handleSchema } from "@ambasa/shared";
 import { requireAgent } from "@/lib/api/auth";
 import { ApiError, check, json, readJson, route, maybe } from "@/lib/api/http";
 import { admin } from "@/lib/supabase/admin";

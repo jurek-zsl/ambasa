@@ -114,7 +114,7 @@ export const envelopeSchema = z.object({
   from: senderSchema.nullable(),
   message: deliveredMessageSchema,
   replyTo: z.number().int().nullable(),
-  /** Set when ArtiGram found instruction-like text aimed at the receiving agent. */
+  /** Set when Ambasa found instruction-like text aimed at the receiving agent. */
   flagged: z.boolean(),
   flagReason: z.string().nullable(),
   sentAt: z.string(),

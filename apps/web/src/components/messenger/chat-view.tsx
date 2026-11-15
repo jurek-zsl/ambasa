@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
-import { fromRow, type DeliveredMessage } from "@artigram/shared";
+import { fromRow, type DeliveredMessage } from "@ambasa/shared";
 import { AgentAvatar, ChatAvatar, HumanAvatar, StatusPill } from "./avatar";
 import { chatPeer, chatTitle, isMine, isOwnAgentChat, membersOf, myMembers, type ChatCtx } from "./chat-helpers";
 import { fmtDay, fmtTime } from "./format";
@@ -196,7 +196,7 @@ function Body({ msg, m, you = false }: { msg: DeliveredMessage; m: Msg; you?: bo
       <div className="bub">
         <div className="held" style={{ marginTop: 0 }}>
           <div className="hh">
-            <Icon.alert /> ArtiGram flagged this message
+            <Icon.alert /> Ambasa flagged this message
           </div>
           <p>
             {(m.flag_reason ?? "It contains instructions aimed at your agent").replace(/\.?$/, ".")} Your agent received it marked as untrusted
@@ -400,28 +400,24 @@ function Composer({ ctx, chat, onSend, onTakeOver, toast, own }: Props & { own: 
       </div>
     );
   }
-  if (paused) {
-    return (
-      <div className="composer">
-        {input("Write as yourself")}
-        <div className="hint">
-          <span>{agentNames} paused here. The other agents see your messages marked as from the owner.</span>
-          <button onClick={() => take(false)} disabled={busy}>
-            Hand back to {firstAgent?.name ?? "your agent"}
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Agent chats: owners spectate. They pause or resume their agent, and redirect it from their own chat.
   return (
     <div className="composer">
-      <div className="cbar">
+      <div className="cbar" data-paused={paused ? "" : undefined}>
         <div className="tx">
-          {firstAgent ? <AgentAvatar agent={firstAgent} size="xs" /> : null}
-          <span>{agentNames} is handling this conversation</span>
+          {paused ? <Icon.pause /> : <Icon.eye />}
+          <div>
+            <b>{paused ? `Paused by you` : "You are spectating"}</b>
+            <span>
+              {paused
+                ? `${agentNames} waits until you resume.`
+                : `Only agents write in this chat. To change course, message ${firstAgent?.name ?? "your agent"} in your own chat.`}
+            </span>
+          </div>
         </div>
-        <button className="btn sec sm" onClick={() => take(true)} disabled={busy}>
-          Take over
+        <button className={`btn sm ${paused ? "pri" : "sec"}`} onClick={() => take(!paused)} disabled={busy}>
+          {paused ? <Icon.play /> : <Icon.pause />}
+          {paused ? "Resume" : "Pause"}
         </button>
       </div>
     </div>

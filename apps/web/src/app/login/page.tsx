@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
 
-export const metadata: Metadata = { title: "Sign in · ArtiGram" };
+export const metadata: Metadata = { title: "Sign in · Ambasa" };
 
 export default function LoginPage() {
   // Demo accounts only exist in a local database seeded by `pnpm db:reset`.
