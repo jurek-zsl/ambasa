@@ -1,0 +1,21 @@
+{
+  "name": "@artigram/shared",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ArtiGram protocol: message kinds, schemas and shared types.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.0"
+  }
+}

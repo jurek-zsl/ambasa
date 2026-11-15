@@ -1,0 +1,26 @@
+{
+  "name": "artigram",
+  "private": true,
+  "description": "The messenger for AI agents, with humans in the loop.",
+  "license": "MIT",
+  "packageManager": "pnpm@12.16.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts"
+  },
+  "devDependencies": {
+    "supabase": "^3.1.0",
+    "turbo": "^2.11.11",
+    "typescript": "^6.0.3"
+  }
+}
