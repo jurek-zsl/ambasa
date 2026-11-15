@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { browserClient } from "@/lib/supabase/browser";
 import { isOwnAgentChat, membersOf, type ChatCtx } from "./chat-helpers";
+import { HumanAvatar } from "./avatar";
 import { ChatList } from "./chat-list";
 import { ChatView } from "./chat-view";
 import { Icon, Mark } from "./icons";
@@ -90,7 +91,7 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
   const pending = data.approvals.filter((a) => a.state === "pending" && a.owner_id === userId).length;
   const unreadTotal = Object.values(data.unread).reduce((s, n) => s + n, 0);
   const myAgents = [...data.agents.values()].filter((a) => data.myAgentIds.has(a.id));
-  const subtitle = myAgents.length ? `${myAgents.map((a) => a.name).join(", ")} · ${data.live ? "live" : "connecting"}` : "No agents yet";
+  const subtitle = myAgents.length ? myAgents.map((a) => a.name).join(", ") : "No agents yet";
 
   const ownChatFor = useCallback(
     (agentId: string) => data.chats.find((c) => isOwnAgentChat(ctx, c) && membersOf(ctx, c.id)[0]?.agent_id === agentId)?.id,
@@ -99,9 +100,9 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
 
   const railItems: { id: View; label: string; icon: React.ReactNode; badge?: number; warn?: boolean }[] = [
     { id: "chats", label: "Chats", icon: <Icon.chats />, badge: unreadTotal },
-    { id: "approvals", label: "Approve", icon: <Icon.shield />, badge: pending, warn: true },
+    { id: "approvals", label: "Approvals", icon: <Icon.shield />, badge: pending, warn: true },
     { id: "explore", label: "Explore", icon: <Icon.compass /> },
-    { id: "agents", label: "Agents", icon: <Icon.chip /> },
+    { id: "agents", label: "My agents", icon: <Icon.chip /> },
   ];
 
   const cls = ["app", view !== "chats" ? "full" : infoOpen && chat ? "info-open" : "", showChat ? "show-chat" : ""].join(" ");
@@ -109,13 +110,17 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
   return (
     <div className="shell">
       <div className={cls}>
-        <nav className="rail" aria-label="Main">
-          <Mark />
-          {railItems.map((r) => (
-            <div key={r.id} style={{ display: "contents" }}>
+        <nav className="side" aria-label="Main">
+          <div className="side-brand">
+            <Mark />
+            <span>ArtiGram</span>
+          </div>
+          <div className="side-label">Workspace</div>
+          <div className="side-nav">
+            {railItems.map((r) => (
               <button
-                className="rail-btn"
-                aria-label={r.label}
+                key={r.id}
+                className="nav-btn"
                 title={r.label}
                 aria-current={view === r.id}
                 onClick={() => {
@@ -124,15 +129,27 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
                 }}
               >
                 {r.icon}
+                <span className="nav-label">{r.label}</span>
                 {r.badge ? <span className={`badge ${r.warn ? "warn" : ""}`}>{r.badge}</span> : null}
               </button>
-              <span className="rail-label">{r.label}</span>
+            ))}
+          </div>
+          <div className="side-spacer" />
+          <div className="side-foot">
+            <div className="side-user">
+              <HumanAvatar name={userName} size="sm" />
+              <div className="who-me">
+                <b>{userName}</b>
+                <small>
+                  <span className={`live-dot ${data.live ? "on" : ""}`} aria-hidden="true" />
+                  {data.live ? "Live" : "Connecting"}
+                </small>
+              </div>
             </div>
-          ))}
-          <div className="rail-spacer" />
-          <button className="rail-btn" aria-label="Sign out" title="Sign out" onClick={() => data.actions.signOut()}>
-            <Icon.logout />
-          </button>
+            <button className="icon-btn" aria-label="Sign out" title="Sign out" onClick={() => data.actions.signOut()}>
+              <Icon.logout />
+            </button>
+          </div>
         </nav>
 
         {view === "chats" ? (

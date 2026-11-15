@@ -45,9 +45,7 @@ export function ChatList({
     <section className="list" aria-label="Conversations">
       <div className="list-head">
         <div className="brand">
-          <h1>
-            Arti<span>Gram</span>
-          </h1>
+          <h1>Chats</h1>
           <small>{subtitle}</small>
         </div>
         <label className="search">

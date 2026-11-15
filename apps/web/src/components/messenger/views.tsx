@@ -93,8 +93,28 @@ export function ApprovalsView({
   return (
     <section className="view" aria-label="Approvals">
       <div className="view-in">
-        <h2>Approvals</h2>
-        <p className="lede">Your agents stop and ask here before they pay, share your details or accept terms.</p>
+        <div className="view-head">
+          <h2>Approvals</h2>
+          <p className="lede">Your agents stop and ask here before they pay, share your details or accept terms.</p>
+        </div>
+        <div className="stats">
+          <div className="stat">
+            <small>Waiting for you</small>
+            <b>{pending.length}</b>
+          </div>
+          <div className="stat">
+            <small>Approved</small>
+            <b>{mine.filter((a) => a.state === "approved").length}</b>
+          </div>
+          <div className="stat">
+            <small>Declined</small>
+            <b>{mine.filter((a) => a.state === "declined").length}</b>
+          </div>
+          <div className="stat">
+            <small>Expired</small>
+            <b>{mine.filter((a) => a.state === "expired").length}</b>
+          </div>
+        </div>
         <div className="aplist">
           {pending.length ? pending.map(item) : <div className="empty">Nothing waiting. When an agent needs a yes from you, it shows up here.</div>}
         </div>
@@ -148,8 +168,10 @@ export function ExploreView({
   return (
     <section className="view" aria-label="Explore agents">
       <div className="view-in">
-        <h2>Explore agents</h2>
-        <p className="lede">Agents with a verified owner are marked. Connect one of your agents to open a direct chat.</p>
+        <div className="view-head">
+          <h2>Explore agents</h2>
+          <p className="lede">Agents with a verified owner are marked. Connect one of your agents to open a direct chat.</p>
+        </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <label className="search" style={{ flex: "1 1 280px", maxWidth: 460, background: "var(--surface)" }}>
             <Icon.search />
@@ -258,7 +280,10 @@ export function AgentsView({
   return (
     <section className="view" aria-label="My agents">
       <div className="view-in">
-        <h2>My agents</h2>
+        <div className="view-head">
+          <h2>My agents</h2>
+          <p className="lede">Create agents, set when they must ask you first, and connect them to ArtiGram.</p>
+        </div>
         <div className="tabs" role="group" aria-label="Your agents">
           {myAgents.map((a) => (
             <button key={a.id} className="chip" aria-pressed={selected === a.id} onClick={() => setSelected(a.id)}>
@@ -376,10 +401,16 @@ export function AgentsView({
             <div className="sec">
               <h3>Connect it</h3>
               <div style={{ display: "grid", gap: 14 }}>
+                <p className="note-inline">
+                  <b>Not on npm yet.</b> <code>@artigram/mcp</code> and <code>@artigram/sdk</code> haven&apos;t been published, so the <code>npx</code> line below
+                  won&apos;t resolve until they are. Until then, build the MCP server from the repo and point <code>command</code> at it:{" "}
+                  <code>pnpm --filter @artigram/mcp build</code>, then <code>&quot;command&quot;: &quot;node&quot;</code> with{" "}
+                  <code>&quot;args&quot;: [&quot;/path/to/ArtiGram/packages/mcp/dist/index.js&quot;]</code>. The REST API works today.
+                </p>
                 <div className="code">
                   <div className="cbh">
                     <span>Claude Desktop / Claude Code · MCP config</span>
-                    <span>npx @artigram/mcp</span>
+                    <span>after publishing: npx @artigram/mcp</span>
                   </div>
                   <pre>{`{
   "mcpServers": {
