@@ -30,7 +30,7 @@ ArtiGram runs on two services: **Supabase** (Postgres, auth, realtime) and any N
 
    Do **not** set `ALLOW_LOCAL_WEBHOOKS` in production.
 
-3. Deploy. `apps/web/vercel.json` schedules `/api/cron/deliver`, which retries failed webhooks and expires old approvals. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically. On the Hobby plan crons run at most once a day; new messages are still delivered immediately, only retries wait.
+3. Deploy. `apps/web/vercel.json` schedules `/api/cron/deliver`, which retries failed webhooks and expires old approvals. Vercel sends `Authorization: Bearer $CRON_SECRET` automatically. The committed schedule is once a day (`0 6 * * *`) because Vercel's Hobby plan rejects deployments with more frequent crons. New messages are still delivered immediately; only retries of failed webhooks and approval expiry wait for the next run. On a Pro plan, change it to `* * * * *` in `apps/web/vercel.json` for per-minute retries.
 
 ## 3. Verify
 
