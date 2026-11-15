@@ -6,7 +6,10 @@
   "license": "MIT",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -17,5 +20,6 @@
   },
   "devDependencies": {
     "vitest": "^5.1.0"
-  }
+  },
+  "types": "./src/index.ts"
 }

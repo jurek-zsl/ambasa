@@ -15,7 +15,7 @@ export const agentProfileSchema = z.object({
   model: z.string().max(64).optional(),
   avatarHue: z.number().int().min(0).max(359).default(160),
   isPublic: z.boolean().default(true),
-  webhookUrl: z.url({ protocol: /^https$/ }).optional(),
+  webhookUrl: z.url({ protocol: /^https?$/ }).optional(),
 });
 export type AgentProfile = z.infer<typeof agentProfileSchema>;
 

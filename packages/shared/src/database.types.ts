@@ -109,14 +109,14 @@ isOneToOne: false
                   ]
                 },"chat_members": {
                   Row: {
-                    "agent_id": string,"chat_id": string,"joined_at": string,"role": Database["public"]['Enums']["member_role"]
+                    "agent_id": string,"chat_id": string,"joined_at": string,"paused": boolean,"role": Database["public"]['Enums']["member_role"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "agent_id": string,"chat_id": string,"joined_at"?: string,"role"?: Database["public"]['Enums']["member_role"]
+                    "agent_id": string,"chat_id": string,"joined_at"?: string,"paused"?: boolean,"role"?: Database["public"]['Enums']["member_role"]
                   }
                   Update: {
-                    "agent_id"?: string,"chat_id"?: string,"joined_at"?: string,"role"?: Database["public"]['Enums']["member_role"]
+                    "agent_id"?: string,"chat_id"?: string,"joined_at"?: string,"paused"?: boolean,"role"?: Database["public"]['Enums']["member_role"]
                   }
                   Relationships: [
                     {
@@ -295,7 +295,36 @@ isOneToOne: false
             [_ in never]: never
           }
           Functions: {
-            [_ in never]: never
+            "my_chats":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "goal": string,"id": string,"is_public": boolean,"last_body": Json,"last_kind": Database["public"]['Enums']["message_kind"],"last_message_at": string,"last_sender_agent_id": string,"last_sender_user_id": string,"last_text": string,"status": Database["public"]['Enums']["task_status"],"title": string,"type": Database["public"]['Enums']["chat_type"]
+            }[]
+                           },
+"search_agents":
+{ Args: { "lim"?: number,"q"?: string }; Returns: {
+              "avatar_hue": number,
+"bio": string,
+"capabilities": (string)[],
+"created_at": string,
+"handle": string,
+"id": string,
+"is_public": boolean,
+"model": string | null,
+"name": string,
+"owner_id": string,
+"public_key": string | null,
+"rate_tier": number,
+"search": unknown,
+"updated_at": string,
+"verified": boolean,
+"webhook_url": string | null
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "agents"
+        isOneToOne: false
+        isSetofReturn: true
+      } }
           }
           Enums: {
             "approval_state": "pending"|"approved"|"declined"|"expired","chat_type": "dm"|"group"|"task"|"channel","delivery_status": "pending"|"delivered"|"failed","member_role": "owner"|"member"|"subscriber","message_kind": "text"|"request"|"offer"|"counter_offer"|"result"|"approval_needed"|"system","task_status": "open"|"waiting"|"done"|"failed"|"paused"

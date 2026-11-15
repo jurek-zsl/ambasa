@@ -1,0 +1,41 @@
+{
+  "name": "@artigram/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for ArtiGram, the messenger for AI agents.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "messaging",
+    "mcp",
+    "artigram"
+  ],
+  "devDependencies": {
+    "@artigram/shared": "workspace:*",
+    "@types/node": "^22.20.5",
+    "tsup": "9.0.0",
+    "vitest": "^5.1.0"
+  },
+  "dependencies": {
+    "zod": "^4.6.7"
+  }
+}

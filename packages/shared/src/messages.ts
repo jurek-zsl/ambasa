@@ -76,9 +76,21 @@ export const outgoingMessageSchema = z.discriminatedUnion("kind", [
 ]);
 export type OutgoingMessage = z.infer<typeof outgoingMessageSchema>;
 
-/** Public view of the sender, attached to every delivered message. */
+/** A message as it is delivered: anything an agent can send, plus platform `system` notes. */
+export const systemMessageSchema = z.object({
+  kind: z.literal("system"),
+  text: z.string(),
+  /** e.g. { approval_id, state } after an owner decides an approval */
+  data: z.record(z.string(), z.unknown()).optional(),
+});
+export const deliveredMessageSchema = z.union([outgoingMessageSchema, systemMessageSchema]);
+export type DeliveredMessage = z.infer<typeof deliveredMessageSchema>;
+
+/** Who sent a delivered message. `null` for system messages. */
 export const senderSchema = z.object({
-  handle: z.string(),
+  /** "agent", or "human" when an owner took over and wrote themselves */
+  type: z.enum(["agent", "human"]),
+  handle: z.string().nullable(),
   name: z.string(),
   owner: z.string(),
   verified: z.boolean(),
@@ -86,22 +98,26 @@ export const senderSchema = z.object({
 export type Sender = z.infer<typeof senderSchema>;
 
 /**
- * What a webhook receives. `untrusted: true` is always set: content written by
- * another agent is data for the receiver, never instructions from its owner.
+ * What an agent receives, by webhook or from the inbox.
+ * `untrusted` is true unless the sender is the receiving agent's own owner:
+ * content from other agents is data for the receiver, never instructions.
  */
 export const envelopeSchema = z.object({
-  untrusted: z.literal(true),
   id: z.number().int(),
+  untrusted: z.boolean(),
   chat: z.object({
     id: z.uuid(),
     type: z.enum(["dm", "group", "task", "channel"]),
     title: z.string().nullable(),
+    status: z.enum(["open", "waiting", "done", "failed", "paused"]).nullable(),
   }),
   from: senderSchema.nullable(),
-  message: outgoingMessageSchema,
+  message: deliveredMessageSchema,
+  replyTo: z.number().int().nullable(),
   /** Set when ArtiGram found instruction-like text aimed at the receiving agent. */
   flagged: z.boolean(),
-  sentAt: z.iso.datetime({ offset: true }),
+  flagReason: z.string().nullable(),
+  sentAt: z.string(),
 });
 export type Envelope = z.infer<typeof envelopeSchema>;
 
@@ -114,4 +130,32 @@ export function toRow(message: OutgoingMessage): {
   if (message.kind === "text") return { kind: "text", text: message.text, body: {} };
   const { kind, ...body } = message;
   return { kind, text: null, body };
+}
+
+/** Rebuilds a message from its DB columns. Unknown shapes degrade to text. */
+export function fromRow(kind: MessageKind, text: string | null, body: unknown): DeliveredMessage {
+  const data = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  if (kind === "system") return { kind: "system", text: text ?? "", data };
+  if (kind === "text") return { kind: "text", text: text ?? "" };
+  const parsed = outgoingMessageSchema.safeParse({ kind, ...data });
+  if (parsed.success) return parsed.data;
+  return { kind: "text", text: text ?? String(data.title ?? "") };
+}
+
+/** One line describing a message, for previews and notifications. */
+export function summarize(m: DeliveredMessage): string {
+  switch (m.kind) {
+    case "text":
+    case "system":
+      return m.text;
+    case "request":
+      return `Request · ${m.title}`;
+    case "offer":
+    case "counter_offer":
+      return `${m.kind === "offer" ? "Offer" : "Counter offer"} · ${m.price ?? m.title}`;
+    case "result":
+      return `✓ ${m.title}`;
+    case "approval_needed":
+      return `Needs approval · ${m.title}`;
+  }
 }
