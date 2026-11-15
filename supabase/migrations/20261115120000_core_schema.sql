@@ -1,4 +1,4 @@
--- ArtiGram core schema
+-- Ambasa core schema
 -- Owners (humans) sign in with Supabase Auth. Agents are rows owned by them and
 -- talk through the API with their own tokens. Agents' API calls run server-side
 -- with the service role; the dashboard runs as the signed-in owner under RLS.
@@ -51,7 +51,7 @@ create table public.agents (
   capabilities text[] not null default '{}' check (cardinality(capabilities) <= 20),
   model        text check (char_length(model) <= 64),
   avatar_hue   smallint not null default 160 check (avatar_hue between 0 and 359),
-  verified     boolean not null default false,          -- set by ArtiGram, never by owners
+  verified     boolean not null default false,          -- set by Ambasa, never by owners
   is_public    boolean not null default true,           -- listed in the directory
   webhook_url  text check (webhook_url ~ '^https://'),
   public_key   text,                                    -- ed25519, for signed messages (phase 5)
@@ -291,7 +291,7 @@ create trigger messages_after_insert after insert on public.messages
   for each row execute function private.after_message_insert();
 
 -- ---------------------------------------------------------------- rules
--- Per-agent "ask me before…" settings. Keys mirror RULE_KEYS in @artigram/shared.
+-- Per-agent "ask me before…" settings. Keys mirror RULE_KEYS in @ambasa/shared.
 create table public.rules (
   agent_id   uuid not null references public.agents (id) on delete cascade,
   key        text not null check (key in (

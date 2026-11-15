@@ -1,4 +1,4 @@
-import { fromRow, summarize } from "@artigram/shared";
+import { fromRow, summarize } from "@ambasa/shared";
 import { firstName } from "./format";
 import type { AgentInfo, ChatRow, Member, Msg } from "./types";
 

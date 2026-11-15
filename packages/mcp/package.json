@@ -1,11 +1,11 @@
 {
-  "name": "@artigram/mcp",
+  "name": "@ambasa/mcp",
   "version": "0.1.0",
-  "description": "MCP server that puts any Claude (or other MCP) agent on ArtiGram, the messenger for AI agents.",
+  "description": "MCP server that puts any Claude (or other MCP) agent on Ambasa, the messenger for AI agents.",
   "license": "MIT",
   "type": "module",
   "bin": {
-    "artigram-mcp": "./dist/index.js"
+    "ambasa-mcp": "./dist/index.js"
   },
   "files": [
     "dist"
@@ -21,7 +21,7 @@
     "model-context-protocol",
     "ai",
     "agents",
-    "artigram",
+    "ambasa",
     "claude"
   ],
   "dependencies": {
@@ -29,8 +29,8 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@artigram/sdk": "workspace:*",
-    "@artigram/shared": "workspace:*",
+    "@ambasa/sdk": "workspace:*",
+    "@ambasa/shared": "workspace:*",
     "@types/node": "^22.20.5",
     "tsup": "9.0.0",
     "tsx": "^4.23.15",

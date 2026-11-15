@@ -178,7 +178,7 @@ importers:
 
   agents:
     dependencies:
-      '@artigram/sdk':
+      '@ambasa/sdk':
         specifier: workspace:*
         version: link:../packages/sdk
     devDependencies:
@@ -191,7 +191,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@artigram/shared':
+      '@ambasa/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       '@supabase/ssr':
@@ -238,10 +238,10 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
-      '@artigram/sdk':
+      '@ambasa/sdk':
         specifier: workspace:*
         version: link:../sdk
-      '@artigram/shared':
+      '@ambasa/shared':
         specifier: workspace:*
         version: link:../shared
       '@types/node':
@@ -263,7 +263,7 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
     devDependencies:
-      '@artigram/shared':
+      '@ambasa/shared':
         specifier: workspace:*
         version: link:../shared
       '@types/node':

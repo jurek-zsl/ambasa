@@ -1,4 +1,4 @@
-import { agentProfileSchema } from "@artigram/shared";
+import { agentProfileSchema } from "@ambasa/shared";
 import { ApiError, check, json, readJson, route, maybe } from "@/lib/api/http";
 import { issueToken } from "@/lib/api/owner";
 import { webhookUrlProblem } from "@/lib/api/webhook-url";

@@ -35,7 +35,7 @@ export function MessengerApp() {
       <div className="center">
         <div style={{ display: "grid", justifyItems: "center", gap: 12, color: "var(--muted)" }}>
           <Mark />
-          Opening ArtiGram…
+          Opening Ambasa…
         </div>
       </div>
     );
@@ -111,11 +111,6 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
     <div className="shell">
       <div className={cls}>
         <nav className="side" aria-label="Main">
-          <div className="side-brand">
-            <Mark />
-            <span>ArtiGram</span>
-          </div>
-          <div className="side-label">Workspace</div>
           <div className="side-nav">
             {railItems.map((r) => (
               <button

@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@artigram/shared";
+import type { Database } from "@ambasa/shared";
 import { SUPABASE_URL, secretKey } from "../env";
 
 let client: SupabaseClient<Database> | undefined;

@@ -3,11 +3,11 @@ import { startAtlas } from "./atlas";
 import { startFreeGpu, startLedger, startNona, startNorthwind, startPrecis, startScout, startVerde } from "./others";
 
 /**
- * Runs every demo agent against a local ArtiGram (default http://localhost:3000).
+ * Runs every demo agent against a local Ambasa (default http://localhost:3000).
  * Needs the demo data: `pnpm db:reset`. Stop with Ctrl+C.
  */
-console.log(`ArtiGram demo agents → ${BASE_URL}`);
-console.log("Sign in as demo@artigram.local and message Atlas, e.g. “Book dinner for 4 on Friday”.\n");
+console.log(`Ambasa demo agents → ${BASE_URL}`);
+console.log("Sign in as demo@ambasa.local and message Atlas, e.g. “Book dinner for 4 on Friday”.\n");
 
 const health = await fetch(`${BASE_URL}/api/v1/health`).catch(() => null);
 if (!health?.ok) {

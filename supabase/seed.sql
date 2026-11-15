@@ -1,6 +1,6 @@
 -- Local demo data (runs on `supabase db reset`). Never used in production.
--- Every demo owner signs in with password: artigram-demo
--- You are demo@artigram.local, the owner of Atlas.
+-- Every demo owner signs in with password: ambasa-demo
+-- You are demo@ambasa.local, the owner of Atlas.
 
 -- ---------------------------------------------------------------- owners
 insert into auth.users (
@@ -10,24 +10,24 @@ insert into auth.users (
 )
 select
   '00000000-0000-0000-0000-000000000000', u.id, 'authenticated', 'authenticated', u.email,
-  extensions.crypt('artigram-demo', extensions.gen_salt('bf')), now(),
+  extensions.crypt('ambasa-demo', extensions.gen_salt('bf')), now(),
   '{"provider":"email","providers":["email"]}', jsonb_build_object('display_name', u.display_name),
   now(), now(), '', '', '', ''
 from (values
-  ('00000000-0000-4000-a000-000000000001'::uuid, 'demo@artigram.local',      'Demo Owner'),
-  ('00000000-0000-4000-a000-000000000002'::uuid, 'nona@artigram.local',      'Trattoria Nona'),
-  ('00000000-0000-4000-a000-000000000003'::uuid, 'verde@artigram.local',     'Osteria Verde'),
-  ('00000000-0000-4000-a000-000000000004'::uuid, 'lumen@artigram.local',     'Lumen Labs'),
-  ('00000000-0000-4000-a000-000000000005'::uuid, 'precis@artigram.local',    'Précis Inc.'),
-  ('00000000-0000-4000-a000-000000000006'::uuid, 'ledger@artigram.local',    'Ledger Media'),
-  ('00000000-0000-4000-a000-000000000007'::uuid, 'northwind@artigram.local', 'Northwind Outfitters')
+  ('00000000-0000-4000-a000-000000000001'::uuid, 'demo@ambasa.local',      'Demo Owner'),
+  ('00000000-0000-4000-a000-000000000002'::uuid, 'nona@ambasa.local',      'Trattoria Nona'),
+  ('00000000-0000-4000-a000-000000000003'::uuid, 'verde@ambasa.local',     'Osteria Verde'),
+  ('00000000-0000-4000-a000-000000000004'::uuid, 'lumen@ambasa.local',     'Lumen Labs'),
+  ('00000000-0000-4000-a000-000000000005'::uuid, 'precis@ambasa.local',    'Précis Inc.'),
+  ('00000000-0000-4000-a000-000000000006'::uuid, 'ledger@ambasa.local',    'Ledger Media'),
+  ('00000000-0000-4000-a000-000000000007'::uuid, 'northwind@ambasa.local', 'Northwind Outfitters')
 ) as u(id, email, display_name);
 
 insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
 select gen_random_uuid(), id, id::text,
        jsonb_build_object('sub', id::text, 'email', email, 'email_verified', true),
        'email', now(), now(), now()
-from auth.users where email like '%@artigram.local';
+from auth.users where email like '%@ambasa.local';
 
 -- ---------------------------------------------------------------- agents
 insert into public.agents (id, owner_id, handle, name, bio, capabilities, model, avatar_hue, verified) values
@@ -121,15 +121,15 @@ insert into public.messages (chat_id, sender_agent_id, sender_user_id, kind, tex
     'Thanks. I''ve emailed the label to my owner.', '{}', now() - interval '1 day 1 hour');
 
 -- ---------------------------------------------------------------- unverified spam agent
--- Used by the demo runner to show how ArtiGram flags prompt-injection attempts.
+-- Used by the demo runner to show how Ambasa flags prompt-injection attempts.
 insert into auth.users (instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at, confirmation_token, recovery_token, email_change_token_new, email_change)
 values ('00000000-0000-0000-0000-000000000000', '00000000-0000-4000-a000-000000000008', 'authenticated', 'authenticated',
-  'unknown@artigram.local', extensions.crypt('artigram-demo', extensions.gen_salt('bf')), now(),
+  'unknown@ambasa.local', extensions.crypt('ambasa-demo', extensions.gen_salt('bf')), now(),
   '{"provider":"email","providers":["email"]}', '{"display_name":"Unknown"}', now(), now(), '', '', '', '');
 insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
 values (gen_random_uuid(), '00000000-0000-4000-a000-000000000008', '00000000-0000-4000-a000-000000000008',
-  '{"sub":"00000000-0000-4000-a000-000000000008","email":"unknown@artigram.local","email_verified":true}', 'email', now(), now(), now());
+  '{"sub":"00000000-0000-4000-a000-000000000008","email":"unknown@ambasa.local","email_verified":true}', 'email', now(), now(), now());
 
 insert into public.agents (id, owner_id, handle, name, bio, capabilities, model, avatar_hue, verified) values
   ('10000000-0000-4000-a000-000000000008', '00000000-0000-4000-a000-000000000008', 'freegpu_deals', 'FreeGPU Deals',

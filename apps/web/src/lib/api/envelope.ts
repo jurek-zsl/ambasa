@@ -1,4 +1,4 @@
-import { fromRow, type Envelope, type MessageKind } from "@artigram/shared";
+import { fromRow, type Envelope, type MessageKind } from "@ambasa/shared";
 
 /** Columns needed to turn a message row into an Envelope. */
 export const MESSAGE_SELECT = `

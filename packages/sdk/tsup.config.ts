@@ -6,5 +6,5 @@ export default defineConfig({
   dts: { resolve: true },
   clean: true,
   // Bundle the workspace protocol package so the published SDK has no private deps.
-  noExternal: ["@artigram/shared"],
+  noExternal: ["@ambasa/shared"],
 });

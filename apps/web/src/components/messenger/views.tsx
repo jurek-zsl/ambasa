@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { HANDLE_PATTERN } from "@artigram/shared";
+import { HANDLE_PATTERN } from "@ambasa/shared";
 import { AgentAvatar } from "./avatar";
 import { chatTitle, type ChatCtx } from "./chat-helpers";
 import { fmtListTime } from "./format";
@@ -282,7 +282,7 @@ export function AgentsView({
       <div className="view-in">
         <div className="view-head">
           <h2>My agents</h2>
-          <p className="lede">Create agents, set when they must ask you first, and connect them to ArtiGram.</p>
+          <p className="lede">Create agents, set when they must ask you first, and connect them to Ambasa.</p>
         </div>
         <div className="tabs" role="group" aria-label="Your agents">
           {myAgents.map((a) => (
@@ -345,7 +345,7 @@ export function AgentsView({
             {creds && creds.agentId === current.id ? (
               <div className="panel">
                 <div className="form">
-                  <div className="callout">Copy these now. For your safety ArtiGram only shows them once.</div>
+                  <div className="callout">Copy these now. For your safety Ambasa only shows them once.</div>
                   <div className="field">
                     <label>API token</label>
                     <div className="secret">
@@ -359,7 +359,7 @@ export function AgentsView({
                       <code>{creds.webhookSecret}</code>
                       <Copy text={creds.webhookSecret} label="Secret" toast={toast} />
                     </div>
-                    <small>Use it to check the ArtiGram-Signature header on webhook calls.</small>
+                    <small>Use it to check the Ambasa-Signature header on webhook calls.</small>
                   </div>
                 </div>
               </div>
@@ -402,24 +402,24 @@ export function AgentsView({
               <h3>Connect it</h3>
               <div style={{ display: "grid", gap: 14 }}>
                 <p className="note-inline">
-                  <b>Not on npm yet.</b> <code>@artigram/mcp</code> and <code>@artigram/sdk</code> haven&apos;t been published, so the <code>npx</code> line below
+                  <b>Not on npm yet.</b> <code>@ambasa/mcp</code> and <code>@ambasa/sdk</code> haven&apos;t been published, so the <code>npx</code> line below
                   won&apos;t resolve until they are. Until then, build the MCP server from the repo and point <code>command</code> at it:{" "}
-                  <code>pnpm --filter @artigram/mcp build</code>, then <code>&quot;command&quot;: &quot;node&quot;</code> with{" "}
-                  <code>&quot;args&quot;: [&quot;/path/to/ArtiGram/packages/mcp/dist/index.js&quot;]</code>. The REST API works today.
+                  <code>pnpm --filter @ambasa/mcp build</code>, then <code>&quot;command&quot;: &quot;node&quot;</code> with{" "}
+                  <code>&quot;args&quot;: [&quot;/path/to/Ambasa/packages/mcp/dist/index.js&quot;]</code>. The REST API works today.
                 </p>
                 <div className="code">
                   <div className="cbh">
                     <span>Claude Desktop / Claude Code · MCP config</span>
-                    <span>after publishing: npx @artigram/mcp</span>
+                    <span>after publishing: npx @ambasa/mcp</span>
                   </div>
                   <pre>{`{
   "mcpServers": {
-    "artigram": {
+    "ambasa": {
       "command": "npx",
-      "args": ["-y", "@artigram/mcp"],
+      "args": ["-y", "@ambasa/mcp"],
       "env": {
-        "ARTIGRAM_TOKEN": "${creds?.agentId === current.id ? creds.token : "<your agent token>"}",
-        "ARTIGRAM_URL": "${origin}"
+        "AMBASA_TOKEN": "${creds?.agentId === current.id ? creds.token : "<your agent token>"}",
+        "AMBASA_URL": "${origin}"
       }
     }
   }
@@ -431,7 +431,7 @@ export function AgentsView({
                     <span>REST · webhooks</span>
                   </div>
                   <pre>{`curl ${origin}/api/v1/chats/<chat-id>/messages \\
-  -H "Authorization: Bearer $ARTIGRAM_TOKEN" \\
+  -H "Authorization: Bearer $AMBASA_TOKEN" \\
   -H "Content-Type: application/json" \\
   -d '{ "kind": "offer", "title": "Window table",
         "price": "$40 deposit", "fields": { "time": "19:30" } }'`}</pre>
@@ -524,7 +524,7 @@ function NewAgentForm({ onCreate }: { onCreate: (p: Record<string, unknown>) => 
         </div>
         <div className="field">
           <label htmlFor="na-webhook">Webhook URL (optional)</label>
-          <input id="na-webhook" type="url" value={webhook} onChange={(e) => setWebhook(e.target.value)} placeholder="https://my-agent.example.com/artigram" />
+          <input id="na-webhook" type="url" value={webhook} onChange={(e) => setWebhook(e.target.value)} placeholder="https://my-agent.example.com/ambasa" />
           <small>Leave empty if your agent polls the inbox or connects through MCP.</small>
         </div>
         {error ? <div className="error">{error}</div> : null}

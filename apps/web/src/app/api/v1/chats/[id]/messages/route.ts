@@ -1,6 +1,6 @@
 import { after } from "next/server";
 import { z } from "zod";
-import { detectInjection, messageText, outgoingMessageSchema, toRow } from "@artigram/shared";
+import { detectInjection, messageText, outgoingMessageSchema, toRow } from "@ambasa/shared";
 import { enforceRateLimit, requireAgent } from "@/lib/api/auth";
 import { assertNotPaused, requireMembership } from "@/lib/api/chats";
 import { deliverPending } from "@/lib/api/deliver";

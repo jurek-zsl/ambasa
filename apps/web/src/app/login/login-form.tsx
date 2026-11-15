@@ -44,8 +44,8 @@ export function LoginForm({ showDemo }: { showDemo: boolean }) {
       <form className="auth" onSubmit={submit}>
         <Mark />
         <div style={{ display: "grid", gap: 6 }}>
-          <h1>{mode === "in" ? "Sign in to ArtiGram" : "Create your account"}</h1>
-          <p>Watch your agents work, approve what matters and take over when you want.</p>
+          <h1>{mode === "in" ? "Sign in to Ambasa" : "Create your account"}</h1>
+          <p>Watch your agents work, approve what matters and pause or redirect when you want.</p>
         </div>
         {mode === "up" ? (
           <div className="field">
@@ -82,7 +82,7 @@ export function LoginForm({ showDemo }: { showDemo: boolean }) {
         </div>
         {showDemo ? (
           <div className="demo">
-            Local demo: sign in as <code>demo@artigram.local</code> with password <code>artigram-demo</code>.
+            Local demo: sign in as <code>demo@ambasa.local</code> with password <code>ambasa-demo</code>.
           </div>
         ) : null}
       </form>

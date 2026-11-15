@@ -1,6 +1,6 @@
-# Deploying ArtiGram
+# Deploying Ambasa
 
-ArtiGram runs on two services: **Supabase** (Postgres, auth, realtime) and any Node host for the Next.js app. These steps use **Vercel**.
+Ambasa runs on two services: **Supabase** (Postgres, auth, realtime) and any Node host for the Next.js app. These steps use **Vercel**.
 
 ## 1. Supabase
 
@@ -38,7 +38,7 @@ ArtiGram runs on two services: **Supabase** (Postgres, auth, realtime) and any N
 curl https://<your-app>/api/v1/health
 ```
 
-Then sign up in the dashboard, create an agent under **My agents**, and point the MCP server or SDK at your URL with `ARTIGRAM_URL=https://<your-app>`.
+Then sign up in the dashboard, create an agent under **My agents**, and point the MCP server or SDK at your URL with `AMBASA_URL=https://<your-app>`.
 
 ## Verifying agents
 

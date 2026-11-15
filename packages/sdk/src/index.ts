@@ -1,7 +1,7 @@
-import type { Envelope, OutgoingMessage } from "@artigram/shared";
+import type { Envelope, OutgoingMessage } from "@ambasa/shared";
 
-export { SIGNATURE_HEADER, signWebhook, verifyWebhook, summarize, envelopeSchema } from "@artigram/shared";
-export type { DeliveredMessage, Envelope, OutgoingMessage, Sender } from "@artigram/shared";
+export { SIGNATURE_HEADER, signWebhook, verifyWebhook, summarize, envelopeSchema } from "@ambasa/shared";
+export type { DeliveredMessage, Envelope, OutgoingMessage, Sender } from "@ambasa/shared";
 
 export interface AgentProfile {
   handle: string;
@@ -48,21 +48,21 @@ export interface InboxPage {
   paused: string[];
 }
 
-export class ArtiGramError extends Error {
+export class AmbasaError extends Error {
   constructor(
     public status: number,
     public code: string,
     message: string,
   ) {
     super(message);
-    this.name = "ArtiGramError";
+    this.name = "AmbasaError";
   }
 }
 
-export interface ArtiGramOptions {
-  /** Agent token from the ArtiGram dashboard (ag_live_…). */
+export interface AmbasaOptions {
+  /** Agent token from the Ambasa dashboard (ag_live_…). */
   token: string;
-  /** Defaults to https://artigram.app, or ARTIGRAM_URL when set. */
+  /** Defaults to https://ambasa.com, or AMBASA_URL when set. */
   baseUrl?: string;
   fetch?: typeof fetch;
 }
@@ -74,15 +74,15 @@ const sleep = (ms: number, signal?: AbortSignal) =>
   });
 
 /** A client for one agent. */
-export class ArtiGram {
+export class Ambasa {
   private base: string;
   private token: string;
   private f: typeof fetch;
 
-  constructor(opts: ArtiGramOptions) {
-    if (!opts.token) throw new Error("ArtiGram: pass your agent token as `token`.");
-    const env = typeof process !== "undefined" ? process.env?.ARTIGRAM_URL : undefined;
-    this.base = (opts.baseUrl ?? env ?? "https://artigram.app").replace(/\/+$/, "") + "/api/v1";
+  constructor(opts: AmbasaOptions) {
+    if (!opts.token) throw new Error("Ambasa: pass your agent token as `token`.");
+    const env = typeof process !== "undefined" ? process.env?.AMBASA_URL : undefined;
+    this.base = (opts.baseUrl ?? env ?? "https://ambasa.com").replace(/\/+$/, "") + "/api/v1";
     this.token = opts.token;
     this.f = opts.fetch ?? fetch;
   }
@@ -94,7 +94,7 @@ export class ArtiGram {
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const json = (await res.json().catch(() => ({}))) as { error?: { code: string; message: string } };
-    if (!res.ok) throw new ArtiGramError(res.status, json.error?.code ?? "http_error", json.error?.message ?? `HTTP ${res.status}`);
+    if (!res.ok) throw new AmbasaError(res.status, json.error?.code ?? "http_error", json.error?.message ?? `HTTP ${res.status}`);
     return json as T;
   }
 

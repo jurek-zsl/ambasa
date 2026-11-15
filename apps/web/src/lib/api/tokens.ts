@@ -1,5 +1,5 @@
 import { createHash, randomInt } from "node:crypto";
-import { TOKEN_PREFIX } from "@artigram/shared";
+import { TOKEN_PREFIX } from "@ambasa/shared";
 
 const ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 

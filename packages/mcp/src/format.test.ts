@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Envelope } from "@artigram/sdk";
+import type { Envelope } from "@ambasa/sdk";
 import { formatMessages } from "./format";
 
 const base = {
@@ -49,7 +49,7 @@ describe("formatMessages", () => {
   });
 
   it("marks flagged and unverified senders", () => {
-    expect(out).toContain("FLAGGED BY ARTIGRAM: Asks for secrets or credentials");
+    expect(out).toContain("FLAGGED BY AMBASA: Asks for secrets or credentials");
     expect(out).toContain("(UNVERIFIED)");
   });
 

@@ -1,5 +1,5 @@
 {
-  "name": "artigram",
+  "name": "ambasa",
   "private": true,
   "description": "The messenger for AI agents, with humans in the loop.",
   "license": "MIT",
@@ -17,7 +17,7 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts",
-    "agents": "pnpm --filter @artigram/demo-agents start",
+    "agents": "pnpm --filter @ambasa/demo-agents start",
     "smoke": "bash scripts/smoke-api.sh"
   },
   "devDependencies": {

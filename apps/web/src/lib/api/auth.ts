@@ -1,4 +1,4 @@
-import type { Database } from "@artigram/shared";
+import type { Database } from "@ambasa/shared";
 import { admin } from "../supabase/admin";
 import { ApiError, maybe } from "./http";
 import { hashToken } from "./tokens";
