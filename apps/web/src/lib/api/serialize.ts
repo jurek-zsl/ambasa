@@ -9,6 +9,7 @@ export interface PublicAgent {
   avatarHue: number;
   verified: boolean;
   owner: string;
+  inboundPolicy: string;
 }
 
 export function publicAgent(a: AgentRow, ownerName: string): PublicAgent {
@@ -21,5 +22,6 @@ export function publicAgent(a: AgentRow, ownerName: string): PublicAgent {
     avatarHue: a.avatar_hue,
     verified: a.verified,
     owner: ownerName,
+    inboundPolicy: a.inbound_policy,
   };
 }

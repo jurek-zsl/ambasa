@@ -11,6 +11,9 @@ import { Icon, Mark } from "./icons";
 import { InfoPanel } from "./info-panel";
 import type { View } from "./types";
 import { useMessenger } from "./use-messenger";
+import { AnalyticsView, ChannelsView, SettingsView } from "./more-views";
+import { Onboarding } from "./onboarding";
+import { Palette } from "./palette";
 import { AgentsView, ApprovalsView, ExploreView } from "./views";
 
 export function MessengerApp() {
@@ -50,6 +53,7 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
   const [showChat, setShowChat] = useState(false);
   const [infoOpen, setInfoOpen] = useState(true);
   const [toastText, setToastText] = useState<string | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const toast = useCallback((t: string) => {
@@ -64,6 +68,17 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
   );
 
   const { open } = data;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const openChat = useCallback(
     (id: string) => {
       setView("chats");
@@ -88,7 +103,9 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
   }, [data.loaded, data.chats, active, ctx, open]);
 
   const chat = data.chats.find((c) => c.id === active);
-  const pending = data.approvals.filter((a) => a.state === "pending" && a.owner_id === userId).length;
+  const requests = data.chats.filter((c) => c.request_state === "pending" && c.request_to && data.myAgentIds.has(c.request_to)).length;
+  const pending = data.approvals.filter((a) => a.state === "pending" && a.owner_id === userId).length + requests;
+  const simple = data.settings?.ui_mode === "simple";
   const unreadTotal = Object.values(data.unread).reduce((s, n) => s + n, 0);
   const myAgents = [...data.agents.values()].filter((a) => data.myAgentIds.has(a.id));
   const subtitle = myAgents.length ? myAgents.map((a) => a.name).join(", ") : "No agents yet";
@@ -98,12 +115,16 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
     [data.chats, ctx],
   );
 
-  const railItems: { id: View; label: string; icon: React.ReactNode; badge?: number; warn?: boolean }[] = [
+  const allRail: { id: View; label: string; icon: React.ReactNode; badge?: number; warn?: boolean; advanced?: boolean }[] = [
     { id: "chats", label: "Chats", icon: <Icon.chats />, badge: unreadTotal },
     { id: "approvals", label: "Approvals", icon: <Icon.shield />, badge: pending, warn: true },
-    { id: "explore", label: "Explore", icon: <Icon.compass /> },
-    { id: "agents", label: "My agents", icon: <Icon.chip /> },
+    { id: "explore", label: "Explore", icon: <Icon.compass />, advanced: true },
+    { id: "channels", label: "Channels", icon: <Icon.task />, advanced: true },
+    { id: "agents", label: "My agents", icon: <Icon.chip />, advanced: true },
+    { id: "analytics", label: "Analytics", icon: <Icon.eye />, advanced: true },
+    { id: "settings", label: "Settings", icon: <Icon.info /> },
   ];
+  const railItems = allRail.filter((r) => !(simple && r.advanced));
 
   const cls = ["app", view !== "chats" ? "full" : infoOpen && chat ? "info-open" : "", showChat ? "show-chat" : ""].join(" ");
 
@@ -165,7 +186,12 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
                 }}
                 onDecide={data.actions.decide}
                 onSend={(text) => data.actions.sendAsOwner(chat.id, text)}
-                onTakeOver={(p) => data.actions.takeOver(chat.id, p)}
+                onControl={(a) => data.actions.control(chat.id, a)}
+                onRedirect={(text) => data.actions.redirect(chat.id, text)}
+                onAnswerRequest={(d) => data.actions.answerRequest(chat.id, d)}
+                reactions={data.reactions[chat.id] ?? []}
+                onReact={(id, emoji) => data.actions.react(id, chat.id, emoji)}
+                onReport={data.actions.report}
                 toast={toast}
               />
             ) : (
@@ -177,7 +203,7 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
               </section>
             )}
             {chat && infoOpen ? (
-              <InfoPanel ctx={ctx} chat={chat} approvals={data.approvals} rules={data.rules} onClose={() => setInfoOpen(false)} />
+              <InfoPanel ctx={ctx} chat={chat} approvals={data.approvals} rules={data.rules} actions={data.actions} onClose={() => setInfoOpen(false)} />
             ) : null}
           </>
         ) : null}
@@ -196,8 +222,25 @@ function Messenger({ userId, userName }: { userId: string; userName: string }) {
           />
         ) : null}
         {view === "agents" ? (
-          <AgentsView ctx={ctx} rules={data.rules} actions={data.actions} toast={toast} onOpenChat={openChat} ownChatFor={ownChatFor} />
+          <AgentsView ctx={ctx} rules={data.rules} actions={data.actions} toast={toast} onOpenChat={openChat} ownChatFor={ownChatFor} grants={data.grants} links={data.links} usage={data.usage} />
         ) : null}
+        {view === "channels" ? (
+          <ChannelsView ctx={ctx} ideas={data.ideas} channels={data.channels} chats={data.chats} actions={data.actions} toast={toast} onOpen={openChat} />
+        ) : null}
+        {view === "analytics" ? <AnalyticsView ctx={ctx} actions={data.actions} /> : null}
+        {view === "settings" ? <SettingsView settings={data.settings} actions={data.actions} toast={toast} /> : null}
+
+        {data.loaded && data.settings && !data.settings.onboarded && myAgents.length === 0 ? (
+          <Onboarding
+            actions={data.actions}
+            toast={toast}
+            onDone={(chatId) => {
+              if (chatId) openChat(chatId);
+              else setView("agents");
+            }}
+          />
+        ) : null}
+        {paletteOpen ? <Palette ctx={ctx} chats={data.chats} actions={data.actions} go={(v) => (setView(v), setShowChat(false))} openChat={openChat} onClose={() => setPaletteOpen(false)} /> : null}
 
         {toastText ? (
           <div className="toast" role="status">

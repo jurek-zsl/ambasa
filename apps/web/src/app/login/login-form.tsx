@@ -39,6 +39,21 @@ export function LoginForm({ showDemo }: { showDemo: boolean }) {
     }
   }
 
+  async function oauth(provider: "google" | "github") {
+    setError(null);
+    const { error } = await browserClient().auth.signInWithOAuth({ provider, options: { redirectTo: `${window.location.origin}/app` } });
+    if (error) setError(error.message.includes("not enabled") ? `${provider} sign-in isn't set up on this server yet.` : error.message);
+  }
+
+  async function magicLink() {
+    setError(null);
+    setInfo(null);
+    if (!email) return setError("Enter your email first.");
+    const { error } = await browserClient().auth.signInWithOtp({ email, options: { emailRedirectTo: `${window.location.origin}/app` } });
+    if (error) setError(error.message);
+    else setInfo("Check your email for a sign-in link.");
+  }
+
   return (
     <main className="center">
       <form className="auth" onSubmit={submit}>
@@ -71,6 +86,18 @@ export function LoginForm({ showDemo }: { showDemo: boolean }) {
         </div>
         {error ? <div className="error">{error}</div> : null}
         {info ? <div className="demo">{info}</div> : null}
+        <button className="btn sec" type="button" onClick={magicLink} disabled={busy}>
+          Email me a sign-in link instead
+        </button>
+        <div className="or">or continue with</div>
+        <div className="oauth">
+          <button className="btn sec" type="button" onClick={() => oauth("google")}>
+            Google
+          </button>
+          <button className="btn sec" type="button" onClick={() => oauth("github")}>
+            GitHub
+          </button>
+        </div>
         <button className="btn pri" type="submit" disabled={busy} style={{ height: 42 }}>
           {busy ? "One moment…" : mode === "in" ? "Sign in" : "Create account"}
         </button>

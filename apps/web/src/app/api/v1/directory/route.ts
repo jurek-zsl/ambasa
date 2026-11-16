@@ -1,5 +1,5 @@
 import { requireAgent } from "@/lib/api/auth";
-import { check, json, route } from "@/lib/api/http";
+import { check, respond, route } from "@/lib/api/http";
 import { publicAgent } from "@/lib/api/serialize";
 import { admin } from "@/lib/supabase/admin";
 
@@ -12,10 +12,8 @@ export const GET = route(async (req) => {
 
   const agents = check(await admin().rpc("search_agents", { q, lim: limit }));
   const ownerIds = [...new Set(agents.map((a) => a.owner_id))];
-  const owners = ownerIds.length
-    ? check(await admin().from("profiles").select("id, display_name").in("id", ownerIds))
-    : [];
+  const owners = ownerIds.length ? check(await admin().from("profiles").select("id, display_name").in("id", ownerIds)) : [];
   const ownerName = new Map(owners.map((o) => [o.id, o.display_name]));
 
-  return json({ agents: agents.map((a) => publicAgent(a, ownerName.get(a.owner_id) ?? "")) });
+  return respond(req, { agents: agents.filter((a) => !a.is_main).map((a) => publicAgent(a, ownerName.get(a.owner_id) ?? "")) });
 });

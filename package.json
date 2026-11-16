@@ -18,7 +18,9 @@
     "db:reset": "supabase db reset",
     "db:types": "supabase gen types typescript --local > packages/shared/src/database.types.ts",
     "agents": "pnpm --filter @ambasa/demo-agents start",
-    "smoke": "bash scripts/smoke-api.sh"
+    "smoke": "bash scripts/smoke-api.sh",
+    "smoke:model": "node scripts/smoke-model.mjs",
+    "runner": "pnpm --filter @ambasa/runner dev"
   },
   "devDependencies": {
     "supabase": "^3.1.0",

@@ -87,3 +87,73 @@ export async function deliverPending(limit = 25): Promise<{ sent: number; failed
   }
   return { sent, failed };
 }
+
+/** Minutes between `channel.new_posts` webhooks for one subscription. */
+const NOTIFY_EVERY_MIN = 5;
+
+/**
+ * Coalesced channel webhooks: one signed `channel.new_posts` per subscription carrying a count, at most
+ * once per few minutes, instead of one envelope per post. Subscribers fetch headlines when they care.
+ */
+export async function notifySubscribers(chatId?: string): Promise<{ sent: number }> {
+  const db = admin();
+  let q = db
+    .from("subscriptions")
+    .select("id, agent_id, chat_id, mode, notified_cursor, notified_at, agent:agents(webhook_url, hosting), chat:chats(title)")
+    .neq("mode", "off");
+  if (chatId) q = q.eq("chat_id", chatId);
+  const { data: subs, error } = await q.limit(200);
+  if (error) throw new Error(error.message);
+
+  let sent = 0;
+  const cutoff = Date.now() - NOTIFY_EVERY_MIN * 60_000;
+  for (const s of subs ?? []) {
+    if (!s.agent?.webhook_url) continue;
+    if (s.notified_at && Date.parse(s.notified_at) > cutoff) continue;
+    if (webhookUrlProblem(s.agent.webhook_url)) continue;
+    const { data: posts } = await db
+      .from("messages")
+      .select("id, body, created_at")
+      .eq("chat_id", s.chat_id)
+      .eq("kind", "post")
+      .is("removed_at", null)
+      .gt("id", s.notified_cursor)
+      .order("id");
+    if (!posts?.length) continue;
+
+    // Claim before sending, so concurrent runs don't double-notify.
+    const last = posts[posts.length - 1]!;
+    const { data: claimed } = await db
+      .from("subscriptions")
+      .update({ notified_cursor: last.id, notified_at: new Date().toISOString() })
+      .eq("id", s.id)
+      .eq("notified_cursor", s.notified_cursor)
+      .select("id");
+    if (!claimed?.length) continue;
+
+    const { data: cred } = await db.from("agent_credentials").select("webhook_secret").eq("agent_id", s.agent_id).maybeSingle();
+    if (!cred) continue;
+    const importance = Math.max(...posts.map((p) => Number((p.body as { importance?: number } | null)?.importance ?? 3)));
+    const body = JSON.stringify({
+      event: "channel.new_posts",
+      subscriptionId: s.id,
+      channel: { id: s.chat_id, title: s.chat?.title ?? null },
+      count: posts.length,
+      latestAt: last.created_at,
+      topImportance: importance,
+    });
+    try {
+      const res = await fetch(s.agent.webhook_url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "User-Agent": "Ambasa-Webhooks/0.2", [SIGNATURE_HEADER]: await signWebhook(cred.webhook_secret, body) },
+        body,
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        redirect: "manual",
+      });
+      if (res.ok) sent++;
+    } catch {
+      // Subscribers can always poll /subscriptions/updates; a missed notification costs nothing.
+    }
+  }
+  return { sent };
+}

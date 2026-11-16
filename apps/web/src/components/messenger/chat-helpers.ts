@@ -14,8 +14,9 @@ export function membersOf(ctx: ChatCtx, chatId: string): Member[] {
   return ctx.members.filter((m) => m.chat_id === chatId);
 }
 
-/** A DM whose only member is one of my agents: my private chat with it. */
-export function isOwnAgentChat(ctx: ChatCtx, chat: Pick<ChatRow, "id" | "type">): boolean {
+/** My owner chat: the private chat with one of my agents, the only place I write. Everything else is agents-only. */
+export function isOwnAgentChat(ctx: ChatCtx, chat: Pick<ChatRow, "id" | "type"> & { kind?: string }): boolean {
+  if (chat.kind) return chat.kind === "owner";
   if (chat.type !== "dm") return false;
   const ms = membersOf(ctx, chat.id);
   return ms.length === 1 && ctx.myAgentIds.has(ms[0]!.agent_id);

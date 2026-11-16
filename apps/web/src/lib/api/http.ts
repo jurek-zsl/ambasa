@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { z } from "zod";
 
 /** An error with a stable `code` that agents can switch on, and a message people can read. */
@@ -7,6 +8,8 @@ export class ApiError extends Error {
     public code: string,
     message: string,
     public headers?: Record<string, string>,
+    /** What to do next. Agents read this instead of guessing. */
+    public hint?: string,
   ) {
     super(message);
   }
@@ -14,8 +17,63 @@ export class ApiError extends Error {
 
 export const notFound = (what: string) => new ApiError(404, "not_found", `${what} not found.`);
 
+/** Approximate size of a payload in LLM tokens (about four characters each). */
+const estTokens = (body: string) => String(Math.ceil(body.length / 4));
+
 export function json(data: unknown, status = 200, headers?: Record<string, string>) {
-  return Response.json(data, { status, headers });
+  const body = JSON.stringify(data);
+  return new Response(body, {
+    status,
+    headers: { "Content-Type": "application/json", "X-Est-Tokens": estTokens(body), ...headers },
+  });
+}
+
+/** Drops nulls, empty strings and empty arrays: fewer tokens for LLM consumers. */
+export function compact(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(compact);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (v === null || v === undefined || v === "" || (Array.isArray(v) && v.length === 0)) continue;
+      out[k] = compact(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+/** `?fields=id,title` keeps only those keys on the items of any top-level list, or on the object itself. */
+export function pickFields(data: unknown, fields: string[]): unknown {
+  const pick = (o: unknown) =>
+    o && typeof o === "object" && !Array.isArray(o) ? Object.fromEntries(Object.entries(o).filter(([k]) => fields.includes(k))) : o;
+  if (!data || typeof data !== "object") return data;
+  if (Array.isArray(data)) return data.map(pick);
+  const out: Record<string, unknown> = {};
+  let hadList = false;
+  for (const [k, v] of Object.entries(data)) {
+    if (Array.isArray(v)) {
+      hadList = true;
+      out[k] = v.map(pick);
+    } else out[k] = v;
+  }
+  return hadList ? out : pick(data);
+}
+
+/**
+ * The response for token-efficient GET endpoints: honors `?fields=`, `?compact=1` and `If-None-Match`
+ * (ETag/304), and always sends `X-Est-Tokens`.
+ */
+export function respond(req: Request, data: unknown, headers?: Record<string, string>) {
+  const url = new URL(req.url);
+  let out = data;
+  const fields = url.searchParams.get("fields");
+  if (fields) out = pickFields(out, fields.split(",").map((f) => f.trim()).filter(Boolean));
+  if (url.searchParams.get("compact") === "1") out = compact(out);
+  const body = JSON.stringify(out);
+  const etag = `W/"${createHash("sha1").update(body).digest("base64url").slice(0, 20)}"`;
+  const base = { ETag: etag, "X-Est-Tokens": estTokens(body), "Cache-Control": "private, no-cache", ...headers };
+  if (req.headers.get("if-none-match") === etag) return new Response(null, { status: 304, headers: base });
+  return new Response(body, { status: 200, headers: { "Content-Type": "application/json", ...base } });
 }
 
 /** Wraps a route handler so thrown ApiErrors become JSON error responses. */
@@ -25,7 +83,7 @@ export function route<C>(fn: (req: Request, ctx: C) => Promise<Response>) {
       return await fn(req, ctx);
     } catch (e) {
       if (e instanceof ApiError) {
-        return json({ error: { code: e.code, message: e.message } }, e.status, e.headers);
+        return json({ error: { code: e.code, message: e.message, ...(e.hint ? { hint: e.hint } : {}) } }, e.status, e.headers);
       }
       console.error(e);
       return json({ error: { code: "internal", message: "Something went wrong on our side. Try again." } }, 500);

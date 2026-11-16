@@ -1,11 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { AgentAvatar, ChatAvatar, StatusPill } from "./avatar";
+import { VisibilityBadge } from "./agent-settings";
 import { chatPeer, chatTitle, isOwnAgentChat, membersOf, type ChatCtx } from "./chat-helpers";
 import { Icon, Verified } from "./icons";
 import type { AgentInfo, Approval, ChatRow, Rule } from "./types";
 
 export function AgentProfile({ agent, mine }: { agent: AgentInfo; mine: boolean }) {
+  const [stats, setStats] = useState<{ done: number; failed: number; median: number | null } | null>(null);
+  useEffect(() => {
+    if (agent.visibility !== "public") return;
+    let live = true;
+    void import("@/lib/supabase/browser").then(async ({ browserClient }) => {
+      const { data } = await browserClient().rpc("agent_stats", { p_handle: agent.handle });
+      const s = data as { tasks_done: number; tasks_failed: number; median_response_seconds: number | null } | null;
+      if (live && s) setStats({ done: s.tasks_done, failed: s.tasks_failed, median: s.median_response_seconds });
+    });
+    return () => {
+      live = false;
+    };
+  }, [agent.handle, agent.visibility]);
   return (
     <>
       <div className="prof">
@@ -35,9 +50,26 @@ export function AgentProfile({ agent, mine }: { agent: AgentInfo; mine: boolean 
             <span>{agent.model ?? "Not stated"}</span>
           </div>
           <div>
-            <span>Listed in directory</span>
-            <span>{agent.isPublic ? "Yes" : "No"}</span>
+            <span>Visibility</span>
+            <span>
+              <VisibilityBadge v={agent.visibility} />
+            </span>
           </div>
+          {stats ? (
+            <>
+              <div>
+                <span>Tasks done</span>
+                <span>
+                  {stats.done}
+                  {stats.failed ? ` · ${stats.failed} failed` : ""}
+                </span>
+              </div>
+              <div>
+                <span>Typical reply</span>
+                <span>{stats.median === null ? "No data yet" : stats.median < 90 ? `${stats.median}s` : `${Math.round(stats.median / 60)} min`}</span>
+              </div>
+            </>
+          ) : null}
         </div>
       </div>
       {agent.capabilities.length ? (
@@ -89,14 +121,25 @@ export function InfoPanel({
   chat,
   approvals,
   rules,
+  actions,
   onClose,
 }: {
   ctx: ChatCtx;
   chat: ChatRow;
   approvals: Approval[];
   rules: Rule[];
+  actions: { chatUsage: (chatId: string) => Promise<{ messages: number; est_tokens: number } | null> };
   onClose: () => void;
 }) {
+  const [cost, setCost] = useState<{ messages: number; est_tokens: number } | null>(null);
+  useEffect(() => {
+    let live = true;
+    void actions.chatUsage(chat.id).then((u) => live && setCost(u));
+    return () => {
+      live = false;
+    };
+  }, [actions, chat.id, chat.last_message_at]);
+  const origin = chat.origin as { source?: string; messageId?: number } | null;
   const members = membersOf(ctx, chat.id);
   const peer = chatPeer(ctx, chat);
   let inner: React.ReactNode;
@@ -205,6 +248,44 @@ export function InfoPanel({
           <Icon.close />
         </button>
         {inner}
+        {chat.kind === "agent" ? (
+          <div className="sec">
+            <h3>Why this chat exists</h3>
+            <div className="facts">
+              {chat.goal ? (
+                <div>
+                  <span>Goal</span>
+                  <span>{chat.goal}</span>
+                </div>
+              ) : null}
+              <div>
+                <span>Started from</span>
+                <span>{origin?.source === "owner_message" ? "Your message" : origin?.source === "auto" ? "Your latest message to the agent" : origin?.source === "task" ? "A task" : "No owner message on record"}</span>
+              </div>
+              {chat.frozen ? (
+                <div>
+                  <span>State</span>
+                  <span>Read-only · {(chat.frozen_reason ?? "").replace(/_/g, " ")}</span>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
+        {cost ? (
+          <div className="sec">
+            <h3>Cost</h3>
+            <div className="facts">
+              <div>
+                <span>Messages</span>
+                <span>{cost.messages}</span>
+              </div>
+              <div>
+                <span>Size of the conversation</span>
+                <span>≈ {Number(cost.est_tokens).toLocaleString()} tokens</span>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </div>
     </aside>
   );

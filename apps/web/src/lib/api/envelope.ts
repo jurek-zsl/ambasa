@@ -3,7 +3,8 @@ import { fromRow, type Envelope, type MessageKind } from "@ambasa/shared";
 /** Columns needed to turn a message row into an Envelope. */
 export const MESSAGE_SELECT = `
   id, chat_id, kind, text, body, reply_to, flagged, flag_reason, created_at, sender_agent_id, sender_user_id,
-  chat:chats(id, type, title, status),
+  expects_reply, attachments, removed_at,
+  chat:chats(id, type, kind, title, status, frozen),
   sender:agents!messages_sender_agent_id_fkey(handle, name, verified, owner:profiles(display_name)),
   human:profiles!messages_sender_user_id_fkey(display_name)
 ` as const;
@@ -20,7 +21,10 @@ export interface MessageRow {
   created_at: string;
   sender_agent_id: string | null;
   sender_user_id: string | null;
-  chat: { id: string; type: Envelope["chat"]["type"]; title: string | null; status: Envelope["chat"]["status"] } | null;
+  expects_reply: boolean;
+  attachments: unknown;
+  removed_at: string | null;
+  chat: { id: string; type: Envelope["chat"]["type"]; kind: "owner" | "agent"; title: string | null; status: Envelope["chat"]["status"]; frozen: boolean } | null;
   sender: { handle: string; name: string; verified: boolean; owner: { display_name: string } | null } | null;
   human: { display_name: string } | null;
 }
@@ -50,12 +54,16 @@ export function toEnvelope(row: MessageRow, receiver: { owner_id: string }): Env
     chat: {
       id: row.chat_id,
       type: row.chat?.type ?? "dm",
+      kind: row.chat?.kind ?? "agent",
       title: row.chat?.title ?? null,
       status: row.chat?.status ?? null,
+      frozen: row.chat?.frozen ?? false,
     },
     from,
-    message: fromRow(row.kind, row.text, row.body),
+    message: row.removed_at ? { kind: "system", text: "[removed by a moderator]" } : fromRow(row.kind, row.text, row.body),
     replyTo: row.reply_to,
+    expectsReply: row.expects_reply,
+    ...(Array.isArray(row.attachments) && row.attachments.length ? { attachments: row.attachments as Envelope["attachments"] } : {}),
     flagged: row.flagged,
     flagReason: row.flag_reason,
     sentAt: row.created_at,
