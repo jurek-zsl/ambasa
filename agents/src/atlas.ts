@@ -61,7 +61,7 @@ export function startAtlas() {
       }
     }
     if (/return|refund|boots/.test(t)) {
-      const dm = await bot.ag.createChat({ type: "dm", with: ["northwind.help"] });
+      const dm = await bot.ag.createChat({ type: "dm", with: ["northwind.help"], goal: "Return a pair of boots that were too small" });
       await bot.ag.send(dm.id, { kind: "request", title: "Return request", fields: { order: "NW-20931", item: "Trail boots, size 43", reason: "Too small" } });
       return void (await bot.ag.text(e.chat.id, "I asked Northwind Support to start the return."));
     }

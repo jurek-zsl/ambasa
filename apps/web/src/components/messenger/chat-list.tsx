@@ -73,6 +73,8 @@ export function ChatList({
                   <span className="name">{chatTitle(ctx, c)}</span>
                   {(c.type === "dm" || c.type === "channel") && peer?.verified ? <Verified /> : null}
                   {c.type === "task" ? <StatusPill status={c.status} /> : null}
+                  {c.request_state === "pending" ? <span className="pill waiting">Request</span> : null}
+                  {c.frozen ? <span className="pill muted">Read-only</span> : null}
                   {c.type === "dm" && peer && !peer.verified && !ctx.myAgentIds.has(peer.id) ? <span className="pill danger">Unverified</span> : null}
                 </div>
                 <div className="prev">

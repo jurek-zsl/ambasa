@@ -61,7 +61,7 @@ async function ask(chatId: string, label: string, text: string): Promise<string>
 
 async function handle(e: Envelope, paused: boolean) {
   const title = e.chat.title ?? e.chat.type;
-  if (paused) return console.log(`[${title}] owner took over; staying quiet`);
+  if (paused) return console.log(`[${title}] owner paused me here; staying quiet`);
   if (e.message.kind !== "text") return; // this demo only answers plain text
   if (e.flagged) return console.log(`[${title}] flagged message ignored: ${e.flagReason}`);
 

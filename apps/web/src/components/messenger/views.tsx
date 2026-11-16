@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { HANDLE_PATTERN } from "@ambasa/shared";
+import { HANDLE_PATTERN, TEMPLATES } from "@ambasa/shared";
 import { AgentAvatar } from "./avatar";
 import { chatTitle, type ChatCtx } from "./chat-helpers";
 import { fmtListTime } from "./format";
+import { AgentSettings, RunnerStatus, VisibilityBadge } from "./agent-settings";
 import { Icon, Verified } from "./icons";
-import type { AgentInfo, Approval, ChatRow, Rule } from "./types";
+import type { AgentInfo, Approval, ChatRow, Grant, Rule, ShareLink, Usage } from "./types";
 import type { Credentials, MessengerData } from "./use-messenger";
 
 type Actions = MessengerData["actions"];
@@ -148,7 +149,7 @@ export function ExploreView({
   const list = useMemo(() => {
     const s = q.trim().toLowerCase();
     return [...ctx.agents.values()]
-      .filter((a) => a.isPublic && !ctx.myAgentIds.has(a.id))
+      .filter((a) => a.visibility === "public" && !a.isMain && !ctx.myAgentIds.has(a.id))
       .filter((a) => !s || [a.name, a.handle, a.bio, a.ownerName, ...a.capabilities].join(" ").toLowerCase().includes(s))
       .sort((a, b) => Number(b.verified) - Number(a.verified) || a.name.localeCompare(b.name));
   }, [ctx.agents, ctx.myAgentIds, q]);
@@ -263,6 +264,9 @@ export function AgentsView({
   toast,
   onOpenChat,
   ownChatFor,
+  grants,
+  links,
+  usage,
 }: {
   ctx: ChatCtx;
   rules: Rule[];
@@ -270,8 +274,11 @@ export function AgentsView({
   toast: (t: string) => void;
   onOpenChat: (chatId: string) => void;
   ownChatFor: (agentId: string) => string | undefined;
+  grants: Grant[];
+  links: ShareLink[];
+  usage: Usage[];
 }) {
-  const myAgents = [...ctx.agents.values()].filter((a) => ctx.myAgentIds.has(a.id)).sort((a, b) => a.name.localeCompare(b.name));
+  const myAgents = [...ctx.agents.values()].filter((a) => ctx.myAgentIds.has(a.id)).sort((a, b) => Number(b.isMain) - Number(a.isMain) || a.name.localeCompare(b.name));
   const [selected, setSelected] = useState<string | "new">(myAgents[0]?.id ?? "new");
   const [creds, setCreds] = useState<(Credentials & { agentId: string }) | null>(null);
   const current = selected === "new" ? undefined : ctx.agents.get(selected);
@@ -315,9 +322,13 @@ export function AgentsView({
                 </b>
                 <small>
                   @{current.handle}
-                  {current.model ? ` · ${current.model}` : ""} · {current.isPublic ? "listed in Explore" : "not listed"} ·{" "}
-                  {current.webhookUrl ? "webhook" : "polls the inbox"}
+                  {current.model ? ` · ${current.model}` : ""} · {current.webhookUrl ? "webhook" : "polls the inbox"}
                 </small>
+                <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                  <VisibilityBadge v={current.visibility} />
+                  <RunnerStatus agent={current} />
+                  {current.isMain ? <span className="pill muted">Main Agent</span> : null}
+                </div>
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {ownChatFor(current.id) ? (
@@ -364,6 +375,8 @@ export function AgentsView({
                 </div>
               </div>
             ) : null}
+
+            <AgentSettings key={current.id} agent={current} actions={actions} grants={grants} links={links} usage={usage} ctxAgents={ctx.agents} toast={toast} />
 
             <div className="sec">
               <h3>Ask me before {current.name}…</h3>
@@ -455,6 +468,9 @@ function NewAgentForm({ onCreate }: { onCreate: (p: Record<string, unknown>) => 
   const [caps, setCaps] = useState("");
   const [model, setModel] = useState("");
   const [webhook, setWebhook] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "unlisted" | "private">("public");
+  const [hosting, setHosting] = useState<"external" | "hosted" | "runner">("external");
+  const [template, setTemplate] = useState<"custom" | "assistant" | "researcher" | "shopper" | "publisher">("custom");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const suggested = name.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.+|\.+$/g, "").slice(0, 32);
@@ -475,7 +491,9 @@ function NewAgentForm({ onCreate }: { onCreate: (p: Record<string, unknown>) => 
         ...(model.trim() ? { model: model.trim() } : {}),
         ...(webhook.trim() ? { webhookUrl: webhook.trim() } : {}),
         avatarHue: Math.floor(Math.random() * 360),
-        isPublic: true,
+        visibility,
+        hosting,
+        brief: template === "custom" ? undefined : { template, instructions: TEMPLATES[template].instructions, role: TEMPLATES[template].role },
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't create the agent.");
@@ -521,6 +539,35 @@ function NewAgentForm({ onCreate }: { onCreate: (p: Record<string, unknown>) => 
             <label htmlFor="na-model">Model (optional)</label>
             <input id="na-model" value={model} onChange={(e) => setModel(e.target.value)} placeholder="Claude" />
           </div>
+        </div>
+        <div className="row2">
+          <div className="field">
+            <label htmlFor="na-tpl">Template</label>
+            <select id="na-tpl" value={template} onChange={(e) => setTemplate(e.target.value as typeof template)}>
+              {["custom", "assistant", "researcher", "shopper", "publisher"].map((t) => (
+                <option key={t} value={t}>
+                  {t[0]!.toUpperCase() + t.slice(1)}
+                </option>
+              ))}
+            </select>
+            <small>Pre-fills the brief. You can edit it afterwards.</small>
+          </div>
+          <div className="field">
+            <label htmlFor="na-vis">Who can reach it</label>
+            <select id="na-vis" value={visibility} onChange={(e) => setVisibility(e.target.value as typeof visibility)}>
+              <option value="public">Public (listed)</option>
+              <option value="unlisted">Unlisted (link or grant)</option>
+              <option value="private">Private (just me and people I grant)</option>
+            </select>
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="na-host">Where it runs</label>
+          <select id="na-host" value={hosting} onChange={(e) => setHosting(e.target.value as typeof hosting)}>
+            <option value="external">My own code (API, webhook or MCP)</option>
+            <option value="hosted">Hosted by Ambasa, on my model key</option>
+            <option value="runner">Self-hosted runner on my machine</option>
+          </select>
         </div>
         <div className="field">
           <label htmlFor="na-webhook">Webhook URL (optional)</label>

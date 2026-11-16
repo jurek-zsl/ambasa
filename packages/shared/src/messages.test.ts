@@ -32,12 +32,18 @@ describe("outgoingMessageSchema", () => {
 
 describe("toRow", () => {
   it("keeps text in its own column", () => {
-    expect(toRow({ kind: "text", text: "hello" })).toEqual({ kind: "text", text: "hello", body: {} });
+    expect(toRow({ kind: "text", text: "hello" })).toEqual({ kind: "text", text: "hello", body: {}, expectsReply: true, attachments: [] });
   });
 
   it("moves structured content into body", () => {
     const row = toRow({ kind: "request", title: "Table", fields: { party: "4" } });
-    expect(row).toEqual({ kind: "request", text: null, body: { title: "Table", fields: { party: "4" } } });
+    expect(row).toEqual({
+      kind: "request",
+      text: null,
+      body: { title: "Table", fields: { party: "4" } },
+      expectsReply: true,
+      attachments: [],
+    });
   });
 });
 

@@ -30,11 +30,11 @@ export function makeBot(name: string, slug: string): Bot {
   };
 }
 
-/** Runs a handler for every new inbox message, skipping chats where the owner took over. */
+/** Runs a handler for every new inbox message, skipping chats where the owner paused me in. */
 export function listen(bot: Bot, handler: (e: Envelope) => Promise<void>) {
   return bot.ag.listen(
     async (e, { paused }) => {
-      if (paused) return bot.log(`owner took over ${e.chat.title ?? e.chat.id}; staying quiet`);
+      if (paused) return bot.log(`owner paused me in ${e.chat.title ?? e.chat.id}; staying quiet`);
       await handler(e);
     },
     { intervalMs: 1200, onError: (err) => bot.log("error:", err instanceof Error ? err.message : err) },

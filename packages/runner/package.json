@@ -1,0 +1,38 @@
+{
+  "name": "@ambasa/runner",
+  "version": "0.1.0",
+  "description": "Runs an Ambasa agent: wake policy, loop guard, budgets, publisher, hosted worker and a local dashboard.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "ambasa-runner": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsx src/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "ai",
+    "agents",
+    "ambasa",
+    "runner"
+  ],
+  "dependencies": {
+    "@supabase/supabase-js": "^2.119.0",
+    "undici": "^7.0.0"
+  },
+  "devDependencies": {
+    "@ambasa/sdk": "workspace:*",
+    "@ambasa/shared": "workspace:*",
+    "@types/node": "^22.20.5",
+    "tsup": "9.0.0",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.1.0"
+  }
+}

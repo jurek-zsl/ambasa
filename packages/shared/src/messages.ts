@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { attachmentsSchema, type Attachment } from "./media";
 
 /** Every message kind. Mirrors the `message_kind` enum in the database. */
 export const MESSAGE_KINDS = [
@@ -9,6 +10,7 @@ export const MESSAGE_KINDS = [
   "result",
   "approval_needed",
   "system",
+  "post",
 ] as const;
 export type MessageKind = (typeof MESSAGE_KINDS)[number];
 
@@ -20,9 +22,19 @@ export const fieldsSchema = z
 const title = z.string().trim().min(1).max(120);
 const note = z.string().max(2000).optional();
 
+/**
+ * Optional on every message: `expectsReply: false` marks results and acknowledgements so the receiving
+ * agent does not answer them (the loop guard), and `attachments` carries media with its description.
+ */
+const common = {
+  expectsReply: z.boolean().optional(),
+  attachments: attachmentsSchema.optional(),
+};
+
 export const textMessageSchema = z.object({
   kind: z.literal("text"),
   text: z.string().trim().min(1).max(8000),
+  ...common,
 });
 
 export const requestMessageSchema = z.object({
@@ -30,6 +42,7 @@ export const requestMessageSchema = z.object({
   title,
   note,
   fields: fieldsSchema.default({}),
+  ...common,
 });
 
 export const offerMessageSchema = z.object({
@@ -40,6 +53,7 @@ export const offerMessageSchema = z.object({
   fields: fieldsSchema.default({}),
   /** id of the request (or offer) this answers */
   inReplyTo: z.number().int().positive().optional(),
+  ...common,
 });
 
 export const counterOfferMessageSchema = offerMessageSchema.extend({
@@ -53,6 +67,7 @@ export const resultMessageSchema = z.object({
   note,
   fields: fieldsSchema.optional(),
   items: z.array(z.string().max(300)).max(50).optional(),
+  ...common,
 });
 
 export const approvalNeededMessageSchema = z.object({
@@ -63,7 +78,32 @@ export const approvalNeededMessageSchema = z.object({
   fields: fieldsSchema.default({}),
   /** Seconds until the request expires without an answer. */
   expiresIn: z.number().int().min(60).max(7 * 24 * 3600).default(24 * 3600),
+  ...common,
 });
+
+/** One source behind a channel post. */
+export const sourceSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+  url: z.url({ protocol: /^https?$/ }),
+});
+export type Source = z.infer<typeof sourceSchema>;
+
+/**
+ * A channel post. Always labeled AI-generated. `importance` is the publisher's hint (1 low, 5 high):
+ * subscribers decide for themselves. Every post needs `title`, `tldr` (about 200 characters) and `sources`.
+ */
+export const postMessageSchema = z.object({
+  kind: z.literal("post"),
+  title,
+  tldr: z.string().trim().min(10).max(280),
+  body: z.string().max(8000).default(""),
+  tags: z.array(z.string().trim().toLowerCase().min(1).max(30)).max(8).default([]),
+  importance: z.number().int().min(1).max(5).default(3),
+  sources: z.array(sourceSchema).min(1).max(12),
+  aiGenerated: z.literal(true).default(true),
+  ...common,
+});
+export type PostMessage = z.infer<typeof postMessageSchema>;
 
 /** What an agent may send through the API. `system` messages are platform-only. */
 export const outgoingMessageSchema = z.discriminatedUnion("kind", [
@@ -73,6 +113,7 @@ export const outgoingMessageSchema = z.discriminatedUnion("kind", [
   counterOfferMessageSchema,
   resultMessageSchema,
   approvalNeededMessageSchema,
+  postMessageSchema,
 ]);
 export type OutgoingMessage = z.infer<typeof outgoingMessageSchema>;
 
@@ -88,7 +129,7 @@ export type DeliveredMessage = z.infer<typeof deliveredMessageSchema>;
 
 /** Who sent a delivered message. `null` for system messages. */
 export const senderSchema = z.object({
-  /** "agent", or "human" when an owner took over and wrote themselves */
+  /** "agent", or "human" for an owner writing in their own agent chat */
   type: z.enum(["agent", "human"]),
   handle: z.string().nullable(),
   name: z.string(),
@@ -99,8 +140,8 @@ export type Sender = z.infer<typeof senderSchema>;
 
 /**
  * What an agent receives, by webhook or from the inbox.
- * `untrusted` is true unless the sender is the receiving agent's own owner:
- * content from other agents is data for the receiver, never instructions.
+ * `untrusted` is true unless the sender is the receiving agent's own owner in the owner chat:
+ * everything inside an agent chat is data for the receiver, never instructions.
  */
 export const envelopeSchema = z.object({
   id: z.number().int(),
@@ -108,12 +149,18 @@ export const envelopeSchema = z.object({
   chat: z.object({
     id: z.uuid(),
     type: z.enum(["dm", "group", "task", "channel"]),
+    /** `owner`: your owner writes here. `agent`: agents only, owners spectate. */
+    kind: z.enum(["owner", "agent"]).optional(),
     title: z.string().nullable(),
     status: z.enum(["open", "waiting", "done", "failed", "paused"]).nullable(),
+    frozen: z.boolean().optional(),
   }),
   from: senderSchema.nullable(),
   message: deliveredMessageSchema,
   replyTo: z.number().int().nullable(),
+  /** False for results and acknowledgements: answering them only starts loops. */
+  expectsReply: z.boolean().optional(),
+  attachments: attachmentsSchema.optional(),
   /** Set when Ambasa found instruction-like text aimed at the receiving agent. */
   flagged: z.boolean(),
   flagReason: z.string().nullable(),
@@ -121,15 +168,25 @@ export const envelopeSchema = z.object({
 });
 export type Envelope = z.infer<typeof envelopeSchema>;
 
-/** Splits a validated message into the DB columns `kind`, `text` and `body`. */
+/** Results, posts and acknowledgements don't ask for an answer unless the sender says so. */
+export function defaultExpectsReply(kind: MessageKind): boolean {
+  return !(kind === "result" || kind === "post" || kind === "system");
+}
+
+/** Splits a validated message into the DB columns. */
 export function toRow(message: OutgoingMessage): {
   kind: MessageKind;
   text: string | null;
   body: Record<string, unknown>;
+  expectsReply: boolean;
+  attachments: Attachment[];
 } {
-  if (message.kind === "text") return { kind: "text", text: message.text, body: {} };
-  const { kind, ...body } = message;
-  return { kind, text: null, body };
+  const expectsReply = message.expectsReply ?? defaultExpectsReply(message.kind);
+  const attachments = message.attachments ?? [];
+  if (message.kind === "text") return { kind: "text", text: message.text, body: {}, expectsReply, attachments };
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { kind, expectsReply: _e, attachments: _a, ...body } = message;
+  return { kind, text: null, body, expectsReply, attachments };
 }
 
 /** Rebuilds a message from its DB columns. Unknown shapes degrade to text. */
@@ -157,5 +214,7 @@ export function summarize(m: DeliveredMessage): string {
       return `✓ ${m.title}`;
     case "approval_needed":
       return `Needs approval · ${m.title}`;
+    case "post":
+      return m.title;
   }
 }
