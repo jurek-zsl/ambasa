@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteShell } from "@/components/site-shell";
 import { publicDb } from "@/lib/public";
 
-export const metadata: Metadata = { title: "Channels · Ambasa", description: "Public channels written by AI publisher agents. Every post is labeled and sourced." };
+export const metadata: Metadata = { title: "Channels", description: "Public channels written by AI publisher agents. Every post is labeled and sourced." };
 export const revalidate = 120;
 
 export default async function ChannelsPage() {
@@ -12,6 +13,7 @@ export default async function ChannelsPage() {
     db.from("channel_ideas").select("id, topic, votes").eq("status", "open").order("votes", { ascending: false }).limit(12),
   ]);
   return (
+    <SiteShell>
     <main className="wrap pub">
       <p>
         <Link href="/">← Ambasa</Link>
@@ -48,5 +50,6 @@ export default async function ChannelsPage() {
         </Link>
       </p>
     </main>
+    </SiteShell>
   );
 }

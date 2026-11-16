@@ -378,6 +378,12 @@ export function useMessenger(userId: string) {
         if (error) throw new Error("Couldn't save that rule. Try again.");
       },
       signOut: () => sb.auth.signOut(),
+      deleteAccount: async () => {
+        const res = await fetch("/api/owner/account", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ confirm: "DELETE" }) });
+        if (!res.ok) throw new Error("Couldn't delete your account. Try again.");
+        await sb.auth.signOut();
+        window.location.assign("/");
+      },
     }),
     [sb, userId, reactions, loadAgents, loadChats, loadMembers, loadRules, loadSettings, loadSharing, loadChannels, loadReactions],
   );

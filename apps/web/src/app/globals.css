@@ -534,3 +534,48 @@ svg { display: block; }
 .field input[type="number"] { appearance: textfield; }
 .acard > .mt { display: grid; gap: 2px; }
 .palette li button { align-items: center; }
+
+/* ---------- site shell, prose, how/faq, error pages */
+.skip { position: absolute; left: 12px; top: -48px; z-index: 50; padding: 10px 14px; border-radius: var(--r-sm); background: var(--primary); color: var(--on-primary); font: 600 14px/1 var(--font-ui); transition: top var(--dur-1) var(--ease); }
+.skip:focus { top: 12px; }
+.landing nav .navlink { color: var(--ink-muted); text-decoration: none; font: 500 14px/20px var(--font-ui); padding: 8px 10px; border-radius: var(--r-sm); }
+.landing nav .navlink:hover { color: var(--ink); background: var(--surface-2); }
+.landing a:focus-visible, .landing summary:focus-visible, .landing button:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.shell-body { display: flex; flex-direction: column; flex: 1; outline: 0; }
+.shell-body > main { width: 100%; }
+.landing footer .wrap.foot { display: grid; grid-template-columns: 1.4fr repeat(3, 1fr); gap: 24px; padding-block: 32px; font: 400 14px/20px var(--font-ui); }
+.fcol { display: grid; gap: 8px; align-content: start; }
+.fcol b { color: var(--ink); font-weight: 600; }
+.fcol a { color: var(--ink-muted); text-decoration: none; }
+.fcol a:hover { color: var(--ink); text-decoration: underline; }
+.fcol span { color: var(--ink-faint); }
+@media (max-width: 720px) { .landing footer .wrap.foot { grid-template-columns: 1fr 1fr; } .landing nav .navlink { display: none; } }
+.eyebrow { margin: 0; color: var(--ink-faint); font: 500 12px/16px var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.center-page { text-align: center; padding-block: clamp(64px, 14vh, 140px); display: grid; justify-items: center; gap: 8px; }
+.center-page .lede { max-width: 52ch; }
+.row-btns { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 16px; }
+.pub .btn, .pub .btn:hover { text-decoration: none; }
+.pub .btn.pri { color: var(--on-primary); }
+.prose h2 { font-size: 20px; margin: 32px 0 8px; }
+.prose p, .prose li { line-height: 1.65; }
+.prose ul, .prose ol { padding-left: 22px; display: grid; gap: 6px; }
+.prose code { font: 500 0.9em var(--font-mono); background: var(--surface-3); padding: 1px 6px; border-radius: var(--r-xs); }
+.prose pre { background: var(--surface-1); border: 1px solid var(--line); border-radius: var(--r); padding: 14px 16px; overflow-x: auto; font: 400 13px/20px var(--font-mono); }
+.prose pre code { background: none; padding: 0; }
+.how, .faq, .cta-band { margin-bottom: 64px; }
+.how h2, .faq h2, .cta-band h2 { font: 600 clamp(24px, 3vw, 32px)/1.15 var(--font-display); letter-spacing: -0.02em; margin: 0 0 20px; }
+.steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.steps li { counter-increment: s; padding: 24px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-1); display: grid; gap: 8px; align-content: start; }
+.steps li::before { content: counter(s); width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-3); color: var(--accent); font: 600 14px var(--font-mono); }
+.steps li p { margin: 0; color: var(--ink-muted); font-size: 14px; line-height: 20px; }
+.faq details { border-top: 1px solid var(--line); padding: 16px 0; }
+.faq details:last-of-type { border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; font: 600 16px/24px var(--font-ui); }
+.faq details p { margin: 8px 0 0; color: var(--ink-muted); max-width: 70ch; }
+.faq a { color: var(--accent); }
+.cta-band { text-align: center; padding: 48px 24px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface-1); }
+.cta-band .ctas { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+@media (max-width: 960px) { .steps { grid-template-columns: 1fr; } }
+.danger-zone { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.danger-zone label { color: var(--danger); }
+@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }

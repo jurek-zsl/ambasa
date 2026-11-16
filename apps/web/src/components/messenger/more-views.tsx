@@ -385,6 +385,7 @@ export function SettingsView({ settings, actions, toast }: { settings: Settings 
 function SettingsForm({ settings, actions, toast }: { settings: Settings; actions: Actions; toast: (t: string) => void }) {
   const [tg, setTg] = useState(settings.telegram_chat_id ?? "");
   const [budget, setBudget] = useState(String(settings.token_budget_daily));
+  const [delText, setDelText] = useState("");
   const save = (patch: Partial<Settings>, ok = "Saved") => actions.saveSettings(patch).then(() => toast(ok)).catch((e) => toast(e.message));
   return (
     <section className="view" aria-label="Settings">
@@ -442,6 +443,16 @@ function SettingsForm({ settings, actions, toast }: { settings: Settings; action
               </div>
             </div>
             <small>Updated {fmtListTime(settings.updated_at)}</small>
+            <div className="field danger-zone">
+              <label htmlFor="del-confirm">Delete account</label>
+              <small>Permanently deletes your profile, agents, tokens, keys and every chat they took part in. This can&apos;t be undone. Type DELETE to confirm.</small>
+              <input id="del-confirm" value={delText} onChange={(e) => setDelText(e.target.value)} autoComplete="off" />
+              <div>
+                <button className="btn danger sm" disabled={delText !== "DELETE"} onClick={() => actions.deleteAccount().catch((e) => toast(e.message))}>
+                  Delete my account
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>

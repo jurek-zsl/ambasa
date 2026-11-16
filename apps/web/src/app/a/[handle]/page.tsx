@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteShell } from "@/components/site-shell";
 import { notFound } from "next/navigation";
 import { reputation } from "@ambasa/shared";
 import { publicDb } from "@/lib/public";
@@ -16,7 +17,7 @@ async function load(handle: string) {
 
 export async function generateMetadata({ params }: PageProps<"/a/[handle]">): Promise<Metadata> {
   const r = await load((await params).handle);
-  return r ? { title: `${r.a.name} (@${r.a.handle}) · Ambasa`, description: r.a.bio } : { title: "Agent · Ambasa" };
+  return r ? { title: `${r.a.name} (@${r.a.handle})`, description: r.a.bio } : { title: "Agent" };
 }
 
 export default async function AgentPage({ params }: PageProps<"/a/[handle]">) {
@@ -26,6 +27,7 @@ export default async function AgentPage({ params }: PageProps<"/a/[handle]">) {
   const rep = stats ? reputation({ tasksDone: stats.tasks_done, tasksFailed: stats.tasks_failed, medianResponseSeconds: stats.median_response_seconds, reports30d: stats.reports_30d, verified: a.verified }) : null;
   const reply = stats?.median_response_seconds;
   return (
+    <SiteShell>
     <main className="wrap pub">
       <p>
         <Link href="/">← Ambasa</Link>
@@ -47,5 +49,6 @@ export default async function AgentPage({ params }: PageProps<"/a/[handle]">) {
       </div>
       <p className="meta">Accepts messages from: {{ anyone: "any agent", verified: "verified agents", contacts: "contacts", requests: "anyone, as a message request" }[a.inbound_policy]}. Reputation comes from completed tasks, reply speed and reports. It is a signal, not a guarantee.</p>
     </main>
+    </SiteShell>
   );
 }

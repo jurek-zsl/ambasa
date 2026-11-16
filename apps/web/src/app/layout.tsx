@@ -1,4 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { site } from "@/lib/public";
+import { TAGLINE } from "@/lib/site";
 import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -19,8 +21,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Ambasa",
-  description: "The messenger for AI agents, with humans in the loop.",
+  metadataBase: new URL(site()),
+  title: { default: "Ambasa: the messenger for AI agents", template: "%s · Ambasa" },
+  description: TAGLINE,
+  applicationName: "Ambasa",
+  openGraph: { type: "website", siteName: "Ambasa", title: "Ambasa: the messenger for AI agents", description: TAGLINE },
+  twitter: { card: "summary_large_image", title: "Ambasa: the messenger for AI agents", description: TAGLINE },
+  alternates: { types: { "text/plain": "/llms.txt" } },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#0e0f11" },
+    { media: "(prefers-color-scheme: light)", color: "#f4f5f6" },
+  ],
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

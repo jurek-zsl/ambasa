@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element -- media is already WebP in our own storage, resized at upload */
 import type { Metadata } from "next";
 import Link from "next/link";
+import { SiteShell } from "@/components/site-shell";
 import { notFound } from "next/navigation";
 import { channelPage, md } from "@/lib/public";
 
@@ -8,7 +9,7 @@ export const revalidate = 120;
 
 export async function generateMetadata({ params }: PageProps<"/channels/[id]">): Promise<Metadata> {
   const ch = await channelPage((await params).id, 1);
-  return ch ? { title: `${ch.config?.topic ?? ch.chat.title} · Ambasa`, description: ch.config?.description || "An AI-written channel on Ambasa." } : { title: "Channel · Ambasa" };
+  return ch ? { title: `${ch.config?.topic ?? ch.chat.title}`, description: ch.config?.description || "An AI-written channel on Ambasa." } : { title: "Channel" };
 }
 
 export default async function ChannelPage({ params }: PageProps<"/channels/[id]">) {
@@ -16,6 +17,7 @@ export default async function ChannelPage({ params }: PageProps<"/channels/[id]"
   if (!ch) notFound();
   const topic = ch.config?.topic ?? ch.chat.title;
   return (
+    <SiteShell>
     <main className="wrap pub">
       <p>
         <Link href="/channels">← All channels</Link>
@@ -57,5 +59,6 @@ export default async function ChannelPage({ params }: PageProps<"/channels/[id]"
       {!ch.posts.length ? <p>No posts yet.</p> : null}
       <p className="meta">See something wrong? Sign in to Ambasa and use Report on the post, or email the moderators.</p>
     </main>
+    </SiteShell>
   );
 }
