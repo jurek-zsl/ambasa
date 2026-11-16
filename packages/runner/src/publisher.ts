@@ -47,13 +47,24 @@ export function extractJson(text: string): Record<string, unknown> | null {
 }
 
 /** A publisher has no tools besides "post": plain code fetches, the LLM only summarizes, the key is never in the prompt. */
-export async function publishOnce(deps: PublishDeps, setup: ChannelSetup): Promise<{ posted: boolean; reason?: string; tokens: number }> {
+export async function publishOnce(
+  deps: PublishDeps,
+  setup: ChannelSetup,
+): Promise<{ posted: boolean; reason?: string; tokens: number }> {
   const { client, log = () => {} } = deps;
   const fetchOne = deps.fetchSourceFn ?? fetchSource;
 
   // What did we already post? Skip those links.
-  const recent = await client.channelPosts(setup.channelId, { view: "full", limit: 40, order: "desc" });
-  const seen = new Set(recent.posts.flatMap((p) => ("sources" in p ? p.sources.map((s) => s.url) : [])));
+  const recent = await client.channelPosts(setup.channelId, {
+    view: "full",
+    limit: 40,
+    order: "desc",
+  });
+  const seen = new Set(
+    recent.posts.flatMap((p) =>
+      "sources" in p ? p.sources.map((s) => s.url) : [],
+    ),
+  );
 
   const found: SourceItem[] = [];
   for (const src of setup.sources) {
@@ -66,21 +77,46 @@ export async function publishOnce(deps: PublishDeps, setup: ChannelSetup): Promi
   const fresh = found.filter((i) => !seen.has(i.url)).slice(0, 5);
   if (!fresh.length) return { posted: false, reason: "nothing new", tokens: 0 };
 
-  const user = fresh.map((i, n) => `[${n + 1}] ${i.title}\n${i.url}\n${i.text.slice(0, 1200)}`).join("\n\n");
-  const res = await (deps.completeFn ?? realComplete)(deps.llm, { system: SYSTEM(setup), messages: [{ role: "user", content: user }], maxTokens: 900 });
+  const user = fresh
+    .map((i, n) => `[${n + 1}] ${i.title}\n${i.url}\n${i.text.slice(0, 1200)}`)
+    .join("\n\n");
+  const res = await (deps.completeFn ?? realComplete)(deps.llm, {
+    system: SYSTEM(setup),
+    messages: [{ role: "user", content: user }],
+    maxTokens: 900,
+  });
   const tokens = res.usage.input + res.usage.output;
+  await deps.client
+    .reportUsage(tokens, 1, {
+      inputTokens: res.usage.input,
+      outputTokens: res.usage.output,
+      provider: deps.llm.provider,
+      model: deps.llm.model,
+      chatId: setup.channelId,
+    })
+    .catch(() => {});
   const data = extractJson(res.text);
-  if (!data) return { posted: false, reason: "the model did not return JSON", tokens };
+  if (!data)
+    return { posted: false, reason: "the model did not return JSON", tokens };
 
   // Only media the source captioned, in enough detail. We never describe images ourselves.
   const attachments: Attachment[] = [];
   const withImage = fresh.find((i) => i.image);
   if (withImage?.image) {
     try {
-      const img = await safeFetch(withImage.image.url, { maxBytes: 5 * 1024 * 1024 });
+      const img = await safeFetch(withImage.image.url, {
+        maxBytes: 5 * 1024 * 1024,
+      });
       if (img.status < 400 && /^image\//.test(img.contentType)) {
-        const up = await client.uploadMedia(img.body, img.contentType.split(";")[0]!);
-        attachments.push({ ...up, alt: withImage.title.slice(0, 120), description: withImage.image.caption });
+        const up = await client.uploadMedia(
+          img.body,
+          img.contentType.split(";")[0]!,
+        );
+        attachments.push({
+          ...up,
+          alt: withImage.title.slice(0, 120),
+          description: withImage.image.caption,
+        });
       }
     } catch (e) {
       log(`image skipped: ${e instanceof Error ? e.message : e}`);
@@ -97,9 +133,15 @@ export async function publishOnce(deps: PublishDeps, setup: ChannelSetup): Promi
     sources: fresh.map((i) => ({ title: i.title.slice(0, 160), url: i.url })),
     attachments,
   });
-  if (!post.success) return { posted: false, reason: `invalid post: ${post.error.issues[0]?.message}`, tokens };
+  if (!post.success)
+    return {
+      posted: false,
+      reason: `invalid post: ${post.error.issues[0]?.message}`,
+      tokens,
+    };
   const screen = screenPost(post.data);
-  if (!screen.ok) return { posted: false, reason: `filtered: ${screen.reason}`, tokens };
+  if (!screen.ok)
+    return { posted: false, reason: `filtered: ${screen.reason}`, tokens };
   await client.send(setup.channelId, post.data);
   return { posted: true, tokens };
 }

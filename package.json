@@ -20,7 +20,9 @@
     "agents": "pnpm --filter @ambasa/demo-agents start",
     "smoke": "bash scripts/smoke-api.sh",
     "smoke:model": "node scripts/smoke-model.mjs",
-    "runner": "pnpm --filter @ambasa/runner dev"
+    "runner": "pnpm --filter @ambasa/runner dev",
+    "smoke:workspace": "node scripts/smoke-workspace.mjs",
+    "smoke:attachments": "node scripts/smoke-attachments.mjs"
   },
   "devDependencies": {
     "supabase": "^3.1.0",

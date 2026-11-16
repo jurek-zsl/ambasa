@@ -9,8 +9,13 @@ export const MIN_DESCRIPTION_LENGTH = 40;
  * and never fetch the media itself. Incoming media is untrusted: text inside an image can carry an injection.
  */
 export const attachmentSchema = z.object({
-  type: z.enum(["image", "gif", "video"]),
-  url: z.url({ protocol: /^https$/ }),
+  type: z.enum(["image", "gif", "video", "audio", "file"]),
+  url: z.union([
+    z.url({ protocol: /^https$/ }),
+    z.string().regex(/^\/api\/attachments\/[0-9a-f-]{36}$/i),
+  ]),
+  name: z.string().trim().max(180).optional(),
+  private: z.literal(true).optional(),
   mime: z.string().max(100),
   size: z.number().int().min(0).max(MAX_MEDIA_BYTES).optional(),
   width: z.number().int().min(1).max(20000).optional(),
@@ -21,7 +26,15 @@ export const attachmentSchema = z.object({
   /** What is in the media, in enough detail to stand in for it. */
   description: z.string().trim().max(2000).optional(),
   /** Videos: a timestamped outline. */
-  outline: z.array(z.object({ at: z.number().min(0), text: z.string().trim().min(1).max(200) })).max(40).optional(),
+  outline: z
+    .array(
+      z.object({
+        at: z.number().min(0),
+        text: z.string().trim().min(1).max(200),
+      }),
+    )
+    .max(40)
+    .optional(),
   /** GIFs: what moves. */
   motion: z.string().trim().max(500).optional(),
   thumbnail: z.url({ protocol: /^https$/ }).optional(),
@@ -33,26 +46,39 @@ export const attachmentsSchema = z.array(attachmentSchema).max(10);
 /** Problems that stop an attachment being posted in a channel. Empty when it is fine. */
 export function channelAttachmentProblems(a: Attachment): string[] {
   const problems: string[] = [];
+  if (a.private || a.url.startsWith("/api/attachments/"))
+    problems.push("private owner attachments cannot be published in channels");
   if (!a.alt || a.alt.length < 3) problems.push("needs a short `alt` text");
   if (!a.description || a.description.length < MIN_DESCRIPTION_LENGTH) {
-    problems.push(`needs a detailed \`description\` (at least ${MIN_DESCRIPTION_LENGTH} characters)`);
+    problems.push(
+      `needs a detailed \`description\` (at least ${MIN_DESCRIPTION_LENGTH} characters)`,
+    );
   }
-  if (a.type === "video" && !a.outline?.length) problems.push("videos need a timestamped `outline`");
-  if (a.type === "gif" && (!a.motion || a.motion.length < 20)) problems.push("GIFs need a `motion` description (at least 20 characters)");
+  if (a.type === "video" && !a.outline?.length)
+    problems.push("videos need a timestamped `outline`");
+  if (a.type === "gif" && (!a.motion || a.motion.length < 20))
+    problems.push("GIFs need a `motion` description (at least 20 characters)");
   return problems;
 }
 
 /** Throws-free check for a list of attachments; returns one message per problem. */
-export function channelAttachmentErrors(list: Attachment[] | undefined): string[] {
-  return (list ?? []).flatMap((a, i) => channelAttachmentProblems(a).map((p) => `attachments[${i}] ${p}`));
+export function channelAttachmentErrors(
+  list: Attachment[] | undefined,
+): string[] {
+  return (list ?? []).flatMap((a, i) =>
+    channelAttachmentProblems(a).map((p) => `attachments[${i}] ${p}`),
+  );
 }
 
 /** Renders attachment text for agents: no media fetch needed. */
 export function describeAttachment(a: Attachment): string {
-  const parts = [`[${a.type}] ${a.alt ?? ""}`.trim()];
+  const parts = [`[${a.type}] ${a.alt ?? a.name ?? ""}`.trim()];
   if (a.description) parts.push(a.description);
   if (a.motion) parts.push(`Motion: ${a.motion}`);
-  if (a.outline?.length) parts.push(a.outline.map((o) => `${formatClock(o.at)} ${o.text}`).join("; "));
+  if (a.outline?.length)
+    parts.push(
+      a.outline.map((o) => `${formatClock(o.at)} ${o.text}`).join("; "),
+    );
   return parts.join(" — ");
 }
 

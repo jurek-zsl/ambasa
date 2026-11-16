@@ -12,10 +12,22 @@ export const GET = route(async (req) => {
     throw new ApiError(401, "unauthorized", "Missing or wrong cron secret.");
   }
   const expired = check(
-    await admin().from("approvals").update({ state: "expired" }).eq("state", "pending").lt("expires_at", new Date().toISOString()).select("id"),
+    await admin()
+      .from("approvals")
+      .update({ state: "expired" })
+      .eq("state", "pending")
+      .lt("expires_at", new Date().toISOString())
+      .select("id"),
   );
   const result = await deliverPending(100);
   const subs = await notifySubscribers();
   const publishers = await admin().rpc("enqueue_due_publishers");
-  return json({ ...result, expiredApprovals: expired.length, channelWebhooks: subs.sent, publishersQueued: publishers.data ?? 0 });
+  const scheduled = check(await admin().rpc("run_due_presets"));
+  return json({
+    scheduled,
+    ...result,
+    expiredApprovals: expired.length,
+    channelWebhooks: subs.sent,
+    publishersQueued: publishers.data ?? 0,
+  });
 });

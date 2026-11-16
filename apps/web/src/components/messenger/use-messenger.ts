@@ -1,14 +1,37 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { AgentProfile } from "@ambasa/shared";
 import { browserClient } from "@/lib/supabase/browser";
-import type { AgentInfo, Approval, Brief, ChannelConfig, ChatRow, Grant, Idea, Member, Msg, Reaction, Rule, Settings, ShareLink, Usage } from "./types";
+import type {
+  Workspace,
+  Readiness,
+  AgentInfo,
+  Approval,
+  Brief,
+  ChannelConfig,
+  ChatRow,
+  Grant,
+  Idea,
+  Member,
+  Msg,
+  Reaction,
+  Rule,
+  Settings,
+  ShareLink,
+  Usage,
+} from "./types";
 
 async function post<T = unknown>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  const res = await fetch(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
   const json = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(json?.error?.message ?? "Something went wrong. Try again.");
+  if (!res.ok)
+    throw new Error(json?.error?.message ?? "Something went wrong. Try again.");
   return json as T;
 }
 
@@ -20,6 +43,7 @@ export interface Credentials {
 /** Everything the dashboard shows, loaded through RLS and kept live with Realtime. */
 export function useMessenger(userId: string) {
   const sb = browserClient();
+  const router = useRouter();
   const [agents, setAgents] = useState<Map<string, AgentInfo>>(new Map());
   const [chats, setChats] = useState<ChatRow[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
@@ -34,6 +58,15 @@ export function useMessenger(userId: string) {
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [channels, setChannels] = useState<ChannelConfig[]>([]);
   const [reactions, setReactions] = useState<Record<string, Reaction[]>>({});
+  const [workspace, setWorkspace] = useState<Workspace>({
+    presets: [],
+    reading: [],
+    checks: [],
+    modelUsage: [],
+    rates: [],
+    previews: [],
+  });
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [live, setLive] = useState(false);
   const activeRef = useRef<string | null>(null);
@@ -71,7 +104,9 @@ export function useMessenger(userId: string) {
         coldContactCap: a.cold_contact_cap,
         guestPolicy: a.guest_policy as unknown as AgentInfo["guestPolicy"],
         runnerSeenAt: a.runner_seen_at,
-        runnerOnline: !!a.runner_seen_at && Date.now() - Date.parse(a.runner_seen_at) < 120_000,
+        runnerOnline:
+          !!a.runner_seen_at &&
+          Date.now() - Date.parse(a.runner_seen_at) < 120_000,
         ownerId: a.owner_id,
         ownerName: a.owner?.display_name ?? "",
         webhookUrl: a.webhook_url,
@@ -82,16 +117,50 @@ export function useMessenger(userId: string) {
 
   const loadChats = useCallback(async () => {
     const { data } = await sb.rpc("my_chats");
-    setChats(data ?? []);
+    const publicChannels = await sb
+      .from("chats")
+      .select("*")
+      .eq("type", "channel")
+      .eq("is_public", true);
+    const own = data ?? [];
+    const extra: ChatRow[] = (publicChannels.data ?? [])
+      .filter((c) => !own.some((x) => x.id === c.id))
+      .map((c) => ({
+        id: c.id,
+        type: c.type,
+        kind: c.kind,
+        title: c.title,
+        status: c.status,
+        goal: c.goal,
+        is_public: c.is_public,
+        frozen: c.frozen,
+        frozen_reason: c.frozen_reason,
+        request_state: c.request_state,
+        request_to: c.request_to,
+        origin: c.origin,
+        last_message_at: c.last_message_at,
+        last_kind: null,
+        last_text: null,
+        last_body: null,
+        last_sender_agent_id: null,
+        last_sender_user_id: null,
+      }));
+    setChats([...own, ...extra]);
   }, [sb]);
 
   const loadMembers = useCallback(async () => {
-    const { data } = await sb.from("chat_members").select("chat_id, agent_id, role, paused");
+    const { data } = await sb
+      .from("chat_members")
+      .select("chat_id, agent_id, role, paused");
     setMembers(data ?? []);
   }, [sb]);
 
   const loadApprovals = useCallback(async () => {
-    const { data } = await sb.from("approvals").select("*").order("created_at", { ascending: false }).limit(200);
+    const { data } = await sb
+      .from("approvals")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
     setApprovals(data ?? []);
   }, [sb]);
 
@@ -103,7 +172,10 @@ export function useMessenger(userId: string) {
   const loadReactions = useCallback(
     async (chatId: string, ids: number[]) => {
       if (!ids.length) return;
-      const { data } = await sb.from("reactions").select("*").in("message_id", ids);
+      const { data } = await sb
+        .from("reactions")
+        .select("*")
+        .in("message_id", ids);
       setReactions((prev) => ({ ...prev, [chatId]: data ?? [] }));
     },
     [sb],
@@ -111,24 +183,68 @@ export function useMessenger(userId: string) {
 
   const loadMessages = useCallback(
     async (chatId: string) => {
-      const { data } = await sb.from("messages").select("*").eq("chat_id", chatId).order("id", { ascending: false }).limit(200);
-      const ordered = [...(data ?? [])].reverse(); // oldest first; computed outside the updater (it may run twice)
+      // Fetch independent conversation metadata together, keeping cached history visible.
+      const [{ data }, reading] = await Promise.all([
+        sb
+          .from("messages")
+          .select("*")
+          .eq("chat_id", chatId)
+          .is("removed_at", null)
+          .order("id", { ascending: false })
+          .limit(200),
+        sb
+          .from("owner_channel_state")
+          .select("saved_ids")
+          .eq("user_id", userId)
+          .eq("chat_id", chatId)
+          .maybeSingle(),
+      ]);
+      const saved = reading.data?.saved_ids.length
+        ? await sb
+            .from("messages")
+            .select("*")
+            .eq("chat_id", chatId)
+            .in("id", reading.data.saved_ids)
+            .is("removed_at", null)
+        : { data: [] };
+      const unique = new Map(
+        [...(data ?? []), ...(saved.data ?? [])].map((m) => [m.id, m]),
+      );
+      const ordered = [...unique.values()].sort((a, b) => a.id - b.id);
       setMessages((prev) => ({ ...prev, [chatId]: ordered }));
-      void loadReactions(chatId, ordered.map((m) => m.id));
+      void loadReactions(
+        chatId,
+        ordered.map((m) => m.id),
+      );
     },
-    [sb, loadReactions],
+    [sb, loadReactions, userId],
   );
 
   const loadSettings = useCallback(async () => {
-    const { data } = await sb.from("profile_settings").select("*").eq("user_id", userId).maybeSingle();
+    const { data } = await sb
+      .from("profile_settings")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
     setSettings(data);
   }, [sb, userId]);
 
   const loadSharing = useCallback(async () => {
     const [g, l, u] = await Promise.all([
-      sb.from("agent_grants").select("*").order("created_at", { ascending: false }),
-      sb.from("share_links").select("id, agent_id, label, expires_at, max_uses, uses, revoked_at, created_at").order("created_at", { ascending: false }),
-      sb.from("agent_usage").select("*").eq("day", new Date().toISOString().slice(0, 10)),
+      sb
+        .from("agent_grants")
+        .select("*")
+        .order("created_at", { ascending: false }),
+      sb
+        .from("share_links")
+        .select(
+          "id, agent_id, label, expires_at, max_uses, uses, revoked_at, created_at",
+        )
+        .order("created_at", { ascending: false }),
+      sb
+        .from("agent_usage")
+        .select("*")
+        .eq("day", new Date().toISOString().slice(0, 10)),
     ]);
     setGrants(g.data ?? []);
     setLinks(l.data ?? []);
@@ -137,20 +253,64 @@ export function useMessenger(userId: string) {
 
   const loadChannels = useCallback(async () => {
     const [i, c] = await Promise.all([
-      sb.from("channel_ideas").select("*").neq("status", "rejected").order("votes", { ascending: false }).limit(60),
+      sb
+        .from("channel_ideas")
+        .select("*")
+        .neq("status", "rejected")
+        .order("votes", { ascending: false })
+        .limit(60),
       sb.from("channel_config").select("*"),
     ]);
     setIdeas(i.data ?? []);
     setChannels(c.data ?? []);
   }, [sb]);
 
+  const loadWorkspace = useCallback(async () => {
+    const response = await fetch("/api/owner/workspace");
+    if (!response.ok)
+      throw new Error("Could not load your workspace. Retry in a moment.");
+    setWorkspace(await response.json());
+  }, []);
+
   const loadAll = useCallback(async () => {
-    await Promise.all([loadAgents(), loadChats(), loadMembers(), loadApprovals(), loadRules(), loadSettings(), loadSharing(), loadChannels()]);
+    try {
+      await Promise.all([
+        loadAgents(),
+        loadChats(),
+        loadMembers(),
+        loadApprovals(),
+        loadRules(),
+        loadSettings(),
+        loadSharing(),
+        loadChannels(),
+        loadWorkspace(),
+      ]);
+      setLoadError(null);
+    } catch (e) {
+      setLoadError(
+        e instanceof Error ? e.message : "Could not load workspace.",
+      );
+    }
     setLoaded(true);
-  }, [loadAgents, loadChats, loadMembers, loadApprovals, loadRules, loadSettings, loadSharing, loadChannels]);
+  }, [
+    loadAgents,
+    loadChats,
+    loadMembers,
+    loadApprovals,
+    loadRules,
+    loadSettings,
+    loadSharing,
+    loadChannels,
+    loadWorkspace,
+  ]);
 
   const myAgentIds = useMemo(
-    () => new Set([...agents.values()].filter((a) => a.ownerId === userId).map((a) => a.id)),
+    () =>
+      new Set(
+        [...agents.values()]
+          .filter((a) => a.ownerId === userId)
+          .map((a) => a.id),
+      ),
     [agents, userId],
   );
   const myAgentIdsRef = useRef(myAgentIds);
@@ -172,7 +332,10 @@ export function useMessenger(userId: string) {
         if (!list || list.some((x) => x.id === m.id)) return prev;
         return { ...prev, [m.chat_id]: [...list, m] };
       });
-      const mine = m.sender_user_id === userId || (m.sender_agent_id !== null && myAgentIdsRef.current.has(m.sender_agent_id));
+      const mine =
+        m.sender_user_id === userId ||
+        (m.sender_agent_id !== null &&
+          myAgentIdsRef.current.has(m.sender_agent_id));
       if (m.chat_id !== activeRef.current && !mine && m.kind !== "system") {
         setUnread((u) => ({ ...u, [m.chat_id]: (u[m.chat_id] ?? 0) + 1 }));
       }
@@ -187,22 +350,68 @@ export function useMessenger(userId: string) {
     void loadAll();
     const channel = sb
       .channel(`ambasa:${userId}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, (p) => addMessage(p.new as Msg))
-      .on("postgres_changes", { event: "*", schema: "public", table: "approvals" }, (p) => {
-        const row = p.new as Approval;
-        if (!row?.id) return;
-        setApprovals((prev) => [row, ...prev.filter((a) => a.id !== row.id)].sort((a, b) => b.created_at.localeCompare(a.created_at)));
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "chat_members" }, () => {
-        void loadMembers();
-        refreshChatsSoon();
-      })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chats" }, () => refreshChatsSoon())
-      .on("postgres_changes", { event: "*", schema: "public", table: "reactions" }, (p) => {
-        const row = (p.new && "message_id" in p.new ? p.new : p.old) as Partial<Reaction>;
-        const chatId = Object.entries(messagesRef.current).find(([, list]) => list.some((m) => m.id === row.message_id))?.[0];
-        if (chatId) void loadReactions(chatId, messagesRef.current[chatId]!.map((m) => m.id));
-      })
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (p) => addMessage(p.new as Msg),
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "messages" },
+        (p) => {
+          const row = p.new as Msg;
+          setMessages((prev) => ({
+            ...prev,
+            [row.chat_id]: (prev[row.chat_id] ?? [])
+              .filter((m) => m.id !== row.id || !row.removed_at)
+              .map((m) => (m.id === row.id ? row : m)),
+          }));
+          refreshChatsSoon();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "approvals" },
+        (p) => {
+          const row = p.new as Approval;
+          if (!row?.id) return;
+          setApprovals((prev) =>
+            [row, ...prev.filter((a) => a.id !== row.id)].sort((a, b) =>
+              b.created_at.localeCompare(a.created_at),
+            ),
+          );
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "chat_members" },
+        () => {
+          void loadMembers();
+          refreshChatsSoon();
+        },
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "chats" },
+        () => refreshChatsSoon(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "reactions" },
+        (p) => {
+          const row = (
+            p.new && "message_id" in p.new ? p.new : p.old
+          ) as Partial<Reaction>;
+          const chatId = Object.entries(messagesRef.current).find(([, list]) =>
+            list.some((m) => m.id === row.message_id),
+          )?.[0];
+          if (chatId)
+            void loadReactions(
+              chatId,
+              messagesRef.current[chatId]!.map((m) => m.id),
+            );
+        },
+      )
       .subscribe((status) => setLive(status === "SUBSCRIBED"));
 
     // Fallback in case Realtime drops: catch up every 10 seconds.
@@ -210,12 +419,12 @@ export function useMessenger(userId: string) {
       void loadChats();
       void loadApprovals();
       void loadAgents();
+      void loadWorkspace().catch(() => {});
+      void loadSharing();
       const active = activeRef.current;
       const list = active ? messagesRef.current[active] : undefined;
       if (active && list) {
-        const last = list.at(-1)?.id ?? 0;
-        const { data } = await sb.from("messages").select("*").eq("chat_id", active).gt("id", last).order("id");
-        for (const m of data ?? []) addMessage(m);
+        await loadMessages(active);
       }
     }, 10_000);
 
@@ -223,25 +432,99 @@ export function useMessenger(userId: string) {
       clearInterval(poll);
       void sb.removeChannel(channel);
     };
-  }, [sb, userId, loadAll, loadChats, loadMembers, loadApprovals, loadAgents, loadReactions, addMessage, refreshChatsSoon]);
+  }, [
+    sb,
+    userId,
+    loadAll,
+    loadChats,
+    loadMembers,
+    loadApprovals,
+    loadAgents,
+    loadReactions,
+    addMessage,
+    refreshChatsSoon,
+    loadWorkspace,
+    loadSharing,
+    loadMessages,
+  ]);
 
   const open = useCallback(
     (chatId: string | null) => {
       activeRef.current = chatId;
       if (!chatId) return;
       setUnread((u) => ({ ...u, [chatId]: 0 }));
-      if (!messagesRef.current[chatId]) void loadMessages(chatId);
+      void loadMessages(chatId);
     },
     [loadMessages],
   );
 
   const actions = useMemo(
     () => ({
-      sendAsOwner: (chatId: string, text: string) => post(`/api/owner/chats/${chatId}/messages`, { text }),
+      refresh: loadAll,
+      loadWorkspace,
+      readiness: async (agentId: string): Promise<Readiness> => {
+        const res = await fetch(`/api/owner/agents/${agentId}/readiness`);
+        const body = await res.json();
+        if (!res.ok)
+          throw new Error(
+            body?.error?.message ?? "Could not check connection.",
+          );
+        return body;
+      },
+      testConnection: (agentId: string) =>
+        post(`/api/owner/agents/${agentId}/readiness`, {}),
+      savePreset: async (b: Record<string, unknown>) => {
+        await post("/api/owner/presets", b);
+        await loadWorkspace();
+      },
+      removePreset: async (id: string) => {
+        const res = await fetch("/api/owner/presets", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        if (!res.ok) throw new Error("Could not remove preset.");
+        await loadWorkspace();
+      },
+      runPreset: async (id: string) => {
+        const res = await fetch("/api/owner/presets", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        const b = await res.json();
+        if (!res.ok)
+          throw new Error(b?.error?.message ?? "Could not start task.");
+        return b as { chatId: string };
+      },
+      reading: async (b: Record<string, unknown>) => {
+        await post("/api/owner/reading", b);
+        await loadWorkspace();
+      },
+      sendAsOwner: async (
+        chatId: string,
+        text: string,
+        attachmentIds: string[] = [],
+        clientId = crypto.randomUUID(),
+      ) => {
+        const result = await post(`/api/owner/chats/${chatId}/messages`, {
+          text,
+          attachmentIds,
+          clientId,
+        });
+        await loadMessages(chatId);
+        return result;
+      },
       decide: async (approvalId: string, decision: "approved" | "declined") => {
         await post(`/api/owner/approvals/${approvalId}`, { decision });
+        await loadApprovals();
+        if (activeRef.current) await loadMessages(activeRef.current);
         setApprovals((prev) =>
-          prev.map((a) => (a.id === approvalId ? { ...a, state: decision, decided_at: new Date().toISOString() } : a)),
+          prev.map((a) =>
+            a.id === approvalId
+              ? { ...a, state: decision, decided_at: new Date().toISOString() }
+              : a,
+          ),
         );
       },
       /** Pause or resume your agents in an agent chat, or stop it for good (read-only). Owners never write into agent chats. */
@@ -250,72 +533,149 @@ export function useMessenger(userId: string) {
         await Promise.all([loadMembers(), loadChats()]);
       },
       /** Steer an agent chat: your words go to your own agent in your owner chat, tagged with this chat. */
-      redirect: (chatId: string, text: string) => post(`/api/owner/chats/${chatId}/redirect`, { text }),
+      redirect: (chatId: string, text: string) =>
+        post(`/api/owner/chats/${chatId}/redirect`, { text }),
       answerRequest: async (chatId: string, decision: "accept" | "decline") => {
         await post(`/api/owner/chats/${chatId}/request`, { decision });
         await loadChats();
       },
       react: async (messageId: number, chatId: string, emoji: string) => {
-        const mine = (reactions[chatId] ?? []).some((r) => r.message_id === messageId && r.user_id === userId && r.emoji === emoji);
+        const mine = (reactions[chatId] ?? []).some(
+          (r) =>
+            r.message_id === messageId &&
+            r.user_id === userId &&
+            r.emoji === emoji,
+        );
         const res = mine
-          ? await sb.from("reactions").delete().eq("message_id", messageId).eq("user_id", userId).eq("emoji", emoji)
-          : await sb.from("reactions").insert({ message_id: messageId, user_id: userId, emoji });
+          ? await sb
+              .from("reactions")
+              .delete()
+              .eq("message_id", messageId)
+              .eq("user_id", userId)
+              .eq("emoji", emoji)
+          : await sb
+              .from("reactions")
+              .insert({ message_id: messageId, user_id: userId, emoji });
         if (res.error) throw new Error("Couldn't react.");
-        await loadReactions(chatId, (messagesRef.current[chatId] ?? []).map((m) => m.id));
+        await loadReactions(
+          chatId,
+          (messagesRef.current[chatId] ?? []).map((m) => m.id),
+        );
       },
-      report: (messageId: number, reason: string) => post("/api/owner/reports", { messageId, reason }),
+      report: (messageId: number, reason: string) =>
+        post("/api/owner/reports", { messageId, reason }),
       updateAgent: async (agentId: string, patch: Record<string, unknown>) => {
-        const res = await fetch(`/api/owner/agents/${agentId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+        const res = await fetch(`/api/owner/agents/${agentId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
         const body = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(body?.error?.message ?? "Couldn't save.");
         await loadAgents();
       },
       deleteAgent: async (agentId: string) => {
-        const res = await fetch(`/api/owner/agents/${agentId}`, { method: "DELETE" });
+        const res = await fetch(`/api/owner/agents/${agentId}`, {
+          method: "DELETE",
+        });
         if (!res.ok) throw new Error("Couldn't delete the agent.");
         await Promise.all([loadAgents(), loadChats(), loadMembers()]);
       },
-      getBrief: async (agentId: string): Promise<{ brief: Brief; preview: string }> => {
+      getBrief: async (
+        agentId: string,
+      ): Promise<{ brief: Brief; preview: string }> => {
         const res = await fetch(`/api/owner/agents/${agentId}/brief`);
         return res.json();
       },
       saveBrief: async (agentId: string, brief: Brief) => {
-        const res = await fetch(`/api/owner/agents/${agentId}/brief`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(brief) });
-        if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.error?.message ?? "Couldn't save the brief.");
+        const res = await fetch(`/api/owner/agents/${agentId}/brief`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(brief),
+        });
+        if (!res.ok)
+          throw new Error(
+            (await res.json().catch(() => ({})))?.error?.message ??
+              "Couldn't save the brief.",
+          );
       },
       /** Seals the model key in this browser to the worker's public key. Only ciphertext leaves the page. */
-      saveKey: async (agentId: string, k: { provider: string; model: string; baseUrl?: string; key: string }) => {
+      saveKey: async (
+        agentId: string,
+        k: { provider: string; model: string; baseUrl?: string; key: string },
+      ) => {
         const pk = await fetch("/api/owner/vault/public-key");
         const pkBody = await pk.json();
-        if (!pk.ok) throw new Error(pkBody?.error?.message ?? "Hosted mode isn't available.");
+        if (!pk.ok)
+          throw new Error(
+            pkBody?.error?.message ?? "Hosted mode isn't available.",
+          );
         const { seal } = await import("@ambasa/shared");
         await fetch(`/api/owner/agents/${agentId}/key`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ provider: k.provider, model: k.model, baseUrl: k.baseUrl || undefined, ciphertext: seal(pkBody.publicKey, k.key), hint: k.key.slice(-4) }),
+          body: JSON.stringify({
+            provider: k.provider,
+            model: k.model,
+            baseUrl: k.baseUrl || undefined,
+            ciphertext: seal(pkBody.publicKey, k.key),
+            hint: k.key.slice(-4),
+          }),
         }).then(async (r) => {
-          if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error?.message ?? "Couldn't save the key.");
+          if (!r.ok)
+            throw new Error(
+              (await r.json().catch(() => ({})))?.error?.message ??
+                "Couldn't save the key.",
+            );
         });
       },
       removeKey: async (agentId: string) => {
-        await fetch(`/api/owner/agents/${agentId}/key`, { method: "DELETE" });
+        const res = await fetch(`/api/owner/agents/${agentId}/key`, {
+          method: "DELETE",
+        });
+        if (!res.ok) throw new Error("Could not remove the key.");
       },
-      createGrant: async (agentId: string, b: { handle: string; tokenBudget?: number | null; dailyMessages?: number | null; expiresAt?: string | null }) => {
+      createGrant: async (
+        agentId: string,
+        b: {
+          handle: string;
+          tokenBudget?: number | null;
+          dailyMessages?: number | null;
+          expiresAt?: string | null;
+        },
+      ) => {
         await post(`/api/owner/agents/${agentId}/grants`, b);
         await loadSharing();
       },
       updateGrant: async (grantId: string, patch: Record<string, unknown>) => {
-        const res = await fetch(`/api/owner/grants/${grantId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(patch) });
+        const res = await fetch(`/api/owner/grants/${grantId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        });
         if (!res.ok) throw new Error("Couldn't save the limits.");
         await loadSharing();
       },
       revokeGrant: async (grantId: string, block = false) => {
-        const res = await fetch(`/api/owner/grants/${grantId}${block ? "?block=1" : ""}`, { method: "DELETE" });
+        const res = await fetch(
+          `/api/owner/grants/${grantId}${block ? "?block=1" : ""}`,
+          { method: "DELETE" },
+        );
         if (!res.ok) throw new Error("Couldn't revoke access.");
         await Promise.all([loadSharing(), loadChats()]);
       },
-      createLink: async (agentId: string, b: { label: string; expiresInHours: number | null; maxUses: number | null }) => {
-        const r = await post<{ token: string; id: string }>(`/api/owner/agents/${agentId}/links`, b);
+      createLink: async (
+        agentId: string,
+        b: {
+          label: string;
+          expiresInHours: number | null;
+          maxUses: number | null;
+        },
+      ) => {
+        const r = await post<{ token: string; id: string }>(
+          `/api/owner/agents/${agentId}/links`,
+          b,
+        );
         await loadSharing();
         return r;
       },
@@ -324,9 +684,12 @@ export function useMessenger(userId: string) {
         await loadSharing();
       },
       saveSettings: async (patch: Partial<Settings>) => {
-        setSettings((s) => (s ? { ...s, ...patch } : s));
-        const { error } = await sb.from("profile_settings").update(patch).eq("user_id", userId);
+        const { error } = await sb
+          .from("profile_settings")
+          .update(patch)
+          .eq("user_id", userId);
         if (error) throw new Error("Couldn't save your settings.");
+        setSettings((s) => (s ? { ...s, ...patch } : s));
       },
       proposeIdea: async (idea: Record<string, unknown>) => {
         await post("/api/owner/channel-ideas", idea);
@@ -337,13 +700,28 @@ export function useMessenger(userId: string) {
         await loadChannels();
       },
       startChannel: async (b: Record<string, unknown>) => {
-        const r = await post<{ estMonthlyTokens: number }>("/api/owner/channels", b);
+        const r = await post<{ estMonthlyTokens: number }>(
+          "/api/owner/channels",
+          b,
+        );
         await Promise.all([loadChannels(), loadChats(), loadMembers()]);
         return r;
       },
-      createMain: async (hosting: "hosted" | "runner" | "external" = "hosted") => {
-        const r = await post<{ agentId: string; ownerChatId: string | null; token?: string }>("/api/owner/main", { hosting });
-        await Promise.all([loadAgents(), loadChats(), loadMembers(), loadSettings()]);
+      createMain: async (
+        hosting: "hosted" | "runner" | "external" = "hosted",
+        template = "assistant",
+      ) => {
+        const r = await post<{
+          agentId: string;
+          ownerChatId: string | null;
+          token?: string;
+        }>("/api/owner/main", { hosting, template });
+        await Promise.all([
+          loadAgents(),
+          loadChats(),
+          loadMembers(),
+          loadSettings(),
+        ]);
         return r;
       },
       analytics: async (): Promise<Record<string, unknown> | null> => {
@@ -355,40 +733,121 @@ export function useMessenger(userId: string) {
         return data?.[0] ?? null;
       },
       searchMessages: async (q: string) => {
-        const { data } = await sb.rpc("search_messages", { q, lim: 20 });
+        const { data, error } = await sb.rpc("search_messages", { q, lim: 20 });
+        if (error) throw new Error("Message search unavailable.");
         return data ?? [];
       },
-      connect: async (agentId: string, withHandle: string) => {
-        const res = await post<{ chatId: string }>("/api/owner/chats", { agentId, withHandle });
+      connect: async (agentId: string, withHandle: string, goal: string) => {
+        const res = await post<{ chatId: string }>("/api/owner/chats", {
+          agentId,
+          withHandle,
+          goal,
+        });
         await Promise.all([loadChats(), loadMembers()]);
         return res.chatId;
       },
-      createAgent: async (profile: Partial<AgentProfile> & { brief?: Partial<Brief> }) => {
-        const res = await post<Credentials & { agent: { id: string } }>("/api/owner/agents", profile);
-        await Promise.all([loadAgents(), loadChats(), loadMembers(), loadRules()]);
+      createAgent: async (
+        profile: Partial<AgentProfile> & { brief?: Partial<Brief> },
+      ) => {
+        const res = await post<Credentials & { agent: { id: string } }>(
+          "/api/owner/agents",
+          profile,
+        );
+        await Promise.all([
+          loadAgents(),
+          loadChats(),
+          loadMembers(),
+          loadRules(),
+        ]);
         return res;
       },
-      rotateToken: (agentId: string) => post<Credentials>(`/api/owner/agents/${agentId}/token`, {}),
+      rotateToken: (agentId: string) =>
+        post<Credentials>(`/api/owner/agents/${agentId}/token`, {}),
       setRule: async (agentId: string, key: string, value: boolean) => {
         setRules((prev) => [
           ...prev.filter((r) => !(r.agent_id === agentId && r.key === key)),
-          { agent_id: agentId, key, value, updated_at: new Date().toISOString() },
+          {
+            agent_id: agentId,
+            key,
+            value,
+            updated_at: new Date().toISOString(),
+          },
         ]);
-        const { error } = await sb.from("rules").upsert({ agent_id: agentId, key, value });
+        const { error } = await sb
+          .from("rules")
+          .upsert({ agent_id: agentId, key, value });
         if (error) throw new Error("Couldn't save that rule. Try again.");
       },
-      signOut: () => sb.auth.signOut(),
+      signOut: async () => {
+        if ("serviceWorker" in navigator) {
+          const reg = await navigator.serviceWorker.getRegistration();
+          const sub = await reg?.pushManager.getSubscription();
+          if (sub) {
+            await fetch("/api/owner/push", {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ endpoint: sub.endpoint }),
+            });
+            await sub.unsubscribe();
+          }
+        }
+        return sb.auth.signOut();
+      },
       deleteAccount: async () => {
-        const res = await fetch("/api/owner/account", { method: "DELETE", headers: { "content-type": "application/json" }, body: JSON.stringify({ confirm: "DELETE" }) });
-        if (!res.ok) throw new Error("Couldn't delete your account. Try again.");
+        const res = await fetch("/api/owner/account", {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ confirm: "DELETE" }),
+        });
+        if (!res.ok)
+          throw new Error("Couldn't delete your account. Try again.");
         await sb.auth.signOut();
-        window.location.assign("/");
+        router.replace("/");
       },
     }),
-    [sb, userId, reactions, loadAgents, loadChats, loadMembers, loadRules, loadSettings, loadSharing, loadChannels, loadReactions],
+    [
+      sb,
+      router,
+      userId,
+      reactions,
+      loadAgents,
+      loadChats,
+      loadMembers,
+      loadRules,
+      loadSettings,
+      loadSharing,
+      loadChannels,
+      loadReactions,
+      loadWorkspace,
+      loadMessages,
+      loadApprovals,
+      loadAll,
+    ],
   );
 
-  return { loaded, live, agents, myAgentIds, chats, members, approvals, rules, messages, unread, settings, grants, links, usage, ideas, channels, reactions, open, actions };
+  return {
+    loaded,
+    live,
+    workspace,
+    loadError,
+    agents,
+    myAgentIds,
+    chats,
+    members,
+    approvals,
+    rules,
+    messages,
+    unread,
+    settings,
+    grants,
+    links,
+    usage,
+    ideas,
+    channels,
+    reactions,
+    open,
+    actions,
+  };
 }
 
 export type MessengerData = ReturnType<typeof useMessenger>;

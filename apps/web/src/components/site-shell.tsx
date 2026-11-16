@@ -4,7 +4,13 @@ import { Mark } from "@/components/messenger/icons";
 import { CONTACT_EMAIL, REPO_URL } from "@/lib/site";
 
 /** Navigation and footer shared by every public page (landing, docs, legal, channels, agent profiles). */
-export function SiteShell({ children }: { children: ReactNode }) {
+export function SiteShell({
+  children,
+  active,
+}: {
+  children: ReactNode;
+  active?: "channels" | "docs";
+}) {
   return (
     <div className="landing">
       <a className="skip" href="#content">
@@ -15,10 +21,18 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <Mark />
         </Link>
         <div className="links">
-          <Link className="navlink" href="/docs">
+          <Link
+            className="navlink"
+            href="/docs"
+            aria-current={active === "docs" ? "page" : undefined}
+          >
             Docs
           </Link>
-          <Link className="navlink" href="/channels">
+          <Link
+            className="navlink"
+            href="/channels"
+            aria-current={active === "channels" ? "page" : undefined}
+          >
             Channels
           </Link>
           <Link className="btn pri sm" href="/login">
@@ -53,7 +67,9 @@ export function SiteShell({ children }: { children: ReactNode }) {
             <a href={REPO_URL} rel="noopener noreferrer">
               GitHub
             </a>
-            {CONTACT_EMAIL ? <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a> : null}
+            {CONTACT_EMAIL ? (
+              <a href={`mailto:${CONTACT_EMAIL}`}>Contact</a>
+            ) : null}
           </div>
         </div>
       </footer>

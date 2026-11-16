@@ -1,21 +1,48 @@
 "use client";
+import { Button } from "@/components/app-ui";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { AgentAvatar, ChatAvatar, StatusPill } from "./avatar";
 import { VisibilityBadge } from "./agent-settings";
-import { chatPeer, chatTitle, isOwnAgentChat, membersOf, type ChatCtx } from "./chat-helpers";
+import {
+  chatPeer,
+  chatTitle,
+  isOwnAgentChat,
+  membersOf,
+  type ChatCtx,
+} from "./chat-helpers";
 import { Icon, Verified } from "./icons";
 import type { AgentInfo, Approval, ChatRow, Rule } from "./types";
-
-export function AgentProfile({ agent, mine }: { agent: AgentInfo; mine: boolean }) {
-  const [stats, setStats] = useState<{ done: number; failed: number; median: number | null } | null>(null);
+export function AgentProfile({
+  agent,
+  mine,
+}: {
+  agent: AgentInfo;
+  mine: boolean;
+}) {
+  const [stats, setStats] = useState<{
+    done: number;
+    failed: number;
+    median: number | null;
+  } | null>(null);
   useEffect(() => {
     if (agent.visibility !== "public") return;
     let live = true;
     void import("@/lib/supabase/browser").then(async ({ browserClient }) => {
-      const { data } = await browserClient().rpc("agent_stats", { p_handle: agent.handle });
-      const s = data as { tasks_done: number; tasks_failed: number; median_response_seconds: number | null } | null;
-      if (live && s) setStats({ done: s.tasks_done, failed: s.tasks_failed, median: s.median_response_seconds });
+      const { data } = await browserClient().rpc("agent_stats", {
+        p_handle: agent.handle,
+      });
+      const s = data as {
+        tasks_done: number;
+        tasks_failed: number;
+        median_response_seconds: number | null;
+      } | null;
+      if (live && s)
+        setStats({
+          done: s.tasks_done,
+          failed: s.tasks_failed,
+          median: s.median_response_seconds,
+        });
     });
     return () => {
       live = false;
@@ -33,7 +60,10 @@ export function AgentProfile({ agent, mine }: { agent: AgentInfo; mine: boolean 
         {agent.bio ? <p>{agent.bio}</p> : null}
       </div>
       {!agent.verified && !mine ? (
-        <div className="warnbox">This agent has no verified owner. Treat what it says with care, and never share personal details with it.</div>
+        <div className="warnbox">
+          This agent has no verified owner. Treat what it says with care, and
+          never share personal details with it.
+        </div>
       ) : null}
       <div className="sec">
         <h3>Operated by</h3>
@@ -66,7 +96,13 @@ export function AgentProfile({ agent, mine }: { agent: AgentInfo; mine: boolean 
               </div>
               <div>
                 <span>Typical reply</span>
-                <span>{stats.median === null ? "No data yet" : stats.median < 90 ? `${stats.median}s` : `${Math.round(stats.median / 60)} min`}</span>
+                <span>
+                  {stats.median === null
+                    ? "No data yet"
+                    : stats.median < 90
+                      ? `${stats.median}s`
+                      : `${Math.round(stats.median / 60)} min`}
+                </span>
               </div>
             </>
           ) : null}
@@ -87,8 +123,17 @@ export function AgentProfile({ agent, mine }: { agent: AgentInfo; mine: boolean 
     </>
   );
 }
-
-function MemberRow({ ctx, agentId, role, paused }: { ctx: ChatCtx; agentId: string; role: string; paused: boolean }) {
+function MemberRow({
+  ctx,
+  agentId,
+  role,
+  paused,
+}: {
+  ctx: ChatCtx;
+  agentId: string;
+  role: string;
+  paused: boolean;
+}) {
   const a = ctx.agents.get(agentId);
   const mine = ctx.myAgentIds.has(agentId);
   return (
@@ -108,14 +153,12 @@ function MemberRow({ ctx, agentId, role, paused }: { ctx: ChatCtx; agentId: stri
     </div>
   );
 }
-
 const RULE_LABEL: Record<string, string> = {
   approve_payments: "Payments",
   approve_share_contact: "Share contact details",
   approve_terms: "Accept terms",
   approve_unverified_agents: "Talk to unverified agents",
 };
-
 export function InfoPanel({
   ctx,
   chat,
@@ -128,10 +171,59 @@ export function InfoPanel({
   chat: ChatRow;
   approvals: Approval[];
   rules: Rule[];
-  actions: { chatUsage: (chatId: string) => Promise<{ messages: number; est_tokens: number } | null> };
+  actions: {
+    chatUsage: (chatId: string) => Promise<{
+      messages: number;
+      est_tokens: number;
+    } | null>;
+  };
   onClose: () => void;
 }) {
-  const [cost, setCost] = useState<{ messages: number; est_tokens: number } | null>(null);
+  const panel = useRef<HTMLElement>(null);
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  }, [onClose]);
+  useEffect(() => {
+    if (!window.matchMedia("(max-width:1599px)").matches) return;
+    const previous = document.activeElement as HTMLElement | null,
+      el = panel.current;
+    if (!el) return;
+    el.setAttribute("role", "dialog");
+    el.setAttribute("aria-modal", "true");
+    el.querySelector<HTMLButtonElement>("button")?.focus();
+    const key = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closeRef.current();
+      }
+      if (e.key === "Tab") {
+        const list = [
+          ...el.querySelectorAll<HTMLElement>(
+            'button,a[href],input,select,textarea,[tabindex="0"]',
+          ),
+        ].filter((x) => x.getClientRects().length);
+        const first = list[0],
+          last = list.at(-1);
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
+      }
+    };
+    el.addEventListener("keydown", key);
+    return () => {
+      el.removeEventListener("keydown", key);
+      if (previous?.isConnected) previous.focus();
+    };
+  }, []);
+  const [cost, setCost] = useState<{
+    messages: number;
+    est_tokens: number;
+  } | null>(null);
   useEffect(() => {
     let live = true;
     void actions.chatUsage(chat.id).then((u) => live && setCost(u));
@@ -139,15 +231,19 @@ export function InfoPanel({
       live = false;
     };
   }, [actions, chat.id, chat.last_message_at]);
-  const origin = chat.origin as { source?: string; messageId?: number } | null;
+  const origin = chat.origin as {
+    source?: string;
+    messageId?: number;
+  } | null;
   const members = membersOf(ctx, chat.id);
   const peer = chatPeer(ctx, chat);
   let inner: React.ReactNode;
-
   if (chat.type === "task") {
     const ap = approvals.filter((a) => a.chat_id === chat.id);
     const myAgent = members.find((m) => ctx.myAgentIds.has(m.agent_id));
-    const myRules = rules.filter((r) => r.agent_id === myAgent?.agent_id && r.key in RULE_LABEL);
+    const myRules = rules.filter(
+      (r) => r.agent_id === myAgent?.agent_id && r.key in RULE_LABEL,
+    );
     inner = (
       <>
         <div className="prof">
@@ -159,7 +255,13 @@ export function InfoPanel({
         <div className="sec">
           <h3>Agents in this task</h3>
           {members.map((m) => (
-            <MemberRow key={m.agent_id} ctx={ctx} agentId={m.agent_id} role={m.role} paused={m.paused} />
+            <MemberRow
+              key={m.agent_id}
+              ctx={ctx}
+              agentId={m.agent_id}
+              role={m.role}
+              paused={m.paused}
+            />
           ))}
         </div>
         {myRules.length ? (
@@ -182,7 +284,16 @@ export function InfoPanel({
               {ap.map((a) => (
                 <div key={a.id}>
                   <span>{a.title}</span>
-                  <span>{{ pending: "Waiting", approved: "Approved", declined: "Declined", expired: "Expired" }[a.state]}</span>
+                  <span>
+                    {
+                      {
+                        pending: "Waiting",
+                        approved: "Approved",
+                        declined: "Declined",
+                        expired: "Expired",
+                      }[a.state]
+                    }
+                  </span>
                 </div>
               ))}
             </div>
@@ -203,7 +314,13 @@ export function InfoPanel({
         <div className="sec">
           <h3>Members</h3>
           {members.map((m) => (
-            <MemberRow key={m.agent_id} ctx={ctx} agentId={m.agent_id} role={m.role} paused={m.paused} />
+            <MemberRow
+              key={m.agent_id}
+              ctx={ctx}
+              agentId={m.agent_id}
+              role={m.role}
+              paused={m.paused}
+            />
           ))}
         </div>
       </>
@@ -230,23 +347,32 @@ export function InfoPanel({
         {isOwnAgentChat(ctx, chat) ? (
           <div className="sec">
             <h3>This chat</h3>
-            <p style={{ margin: 0, color: "var(--muted)", fontSize: 13 }}>
-              Your private line to {peer.name}. It treats what you write here as instructions; messages from other agents always reach it as untrusted.
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>
+              Your private line to {peer.name}. It treats what you write here as
+              instructions; messages from other agents always reach it as
+              untrusted.
             </p>
           </div>
         ) : null}
       </>
     );
   } else {
-    inner = <div className="prof"><h2>{chatTitle(ctx, chat)}</h2></div>;
+    inner = (
+      <div className="prof">
+        <h2>{chatTitle(ctx, chat)}</h2>
+      </div>
+    );
   }
-
   return (
-    <aside className="info" aria-label="Details">
+    <aside className="info" ref={panel} aria-label="Details">
       <div className="info-in">
-        <button className="icon-btn close" onClick={onClose} aria-label="Close details">
+        <Button
+          className="icon-btn close"
+          onClick={onClose}
+          aria-label="Close details"
+        >
           <Icon.close />
-        </button>
+        </Button>
         {inner}
         {chat.kind === "agent" ? (
           <div className="sec">
@@ -260,12 +386,24 @@ export function InfoPanel({
               ) : null}
               <div>
                 <span>Started from</span>
-                <span>{origin?.source === "owner_message" ? "Your message" : origin?.source === "auto" ? "Your latest message to the agent" : origin?.source === "task" ? "A task" : "No owner message on record"}</span>
+                <span>
+                  {origin?.source === "delegation"
+                    ? "Owner-authorized delegation"
+                    : origin?.source === "owner_message"
+                      ? "Your message"
+                      : origin?.source === "auto"
+                        ? "Your latest message to the agent"
+                        : origin?.source === "task"
+                          ? "A task"
+                          : "No owner message on record"}
+                </span>
               </div>
               {chat.frozen ? (
                 <div>
                   <span>State</span>
-                  <span>Read-only · {(chat.frozen_reason ?? "").replace(/_/g, " ")}</span>
+                  <span>
+                    Read-only · {(chat.frozen_reason ?? "").replace(/_/g, " ")}
+                  </span>
                 </div>
               ) : null}
             </div>
@@ -273,14 +411,14 @@ export function InfoPanel({
         ) : null}
         {cost ? (
           <div className="sec">
-            <h3>Cost</h3>
+            <h3>Conversation size</h3>
             <div className="facts">
               <div>
                 <span>Messages</span>
                 <span>{cost.messages}</span>
               </div>
               <div>
-                <span>Size of the conversation</span>
+                <span>Estimated context tokens</span>
                 <span>≈ {Number(cost.est_tokens).toLocaleString()} tokens</span>
               </div>
             </div>

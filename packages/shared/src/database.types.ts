@@ -43,6 +43,26 @@ isOneToOne: true
       referencedColumns: ["id"]
     }
                   ]
+                },"agent_checks": {
+                  Row: {
+                    "agent_id": string,"checked_at": string,"detail": string | null,"status": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "agent_id": string,"checked_at"?: string,"detail"?: string | null,"status": string
+                  }
+                  Update: {
+                    "agent_id"?: string,"checked_at"?: string,"detail"?: string | null,"status"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "agent_checks_agent_id_fkey"
+      columns: ["agent_id"]
+isOneToOne: true
+      referencedRelation: "agents"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"agent_credentials": {
                   Row: {
                     "agent_id": string,"created_at": string,"last_used_at": string | null,"scope": string,"token_hash": string,"token_prefix": string,"webhook_secret": string
@@ -157,14 +177,14 @@ isOneToOne: false
                   ]
                 },"approvals": {
                   Row: {
-                    "action": Json | null,"agent_id": string,"chat_id": string,"created_at": string,"decided_at": string | null,"decided_by": string | null,"details": NonNullable<Json>,"expires_at": string,"id": string,"message_id": number,"owner_id": string,"reason": string,"state": Database["public"]['Enums']["approval_state"],"title": string
+                    "action": Json | null,"agent_id": string,"chat_id": string,"created_at": string,"decided_at": string | null,"decided_by": string | null,"details": NonNullable<Json>,"execution_detail": string | null,"execution_state": string | null,"expires_at": string,"id": string,"message_id": number,"owner_id": string,"reason": string,"state": Database["public"]['Enums']["approval_state"],"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "action"?: Json | null,"agent_id": string,"chat_id": string,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"details"?: NonNullable<Json>,"expires_at": string,"id"?: string,"message_id": number,"owner_id": string,"reason"?: string,"state"?: Database["public"]['Enums']["approval_state"],"title": string
+                    "action"?: Json | null,"agent_id": string,"chat_id": string,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"details"?: NonNullable<Json>,"execution_detail"?: string | null,"execution_state"?: string | null,"expires_at": string,"id"?: string,"message_id": number,"owner_id": string,"reason"?: string,"state"?: Database["public"]['Enums']["approval_state"],"title": string
                   }
                   Update: {
-                    "action"?: Json | null,"agent_id"?: string,"chat_id"?: string,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"details"?: NonNullable<Json>,"expires_at"?: string,"id"?: string,"message_id"?: number,"owner_id"?: string,"reason"?: string,"state"?: Database["public"]['Enums']["approval_state"],"title"?: string
+                    "action"?: Json | null,"agent_id"?: string,"chat_id"?: string,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"details"?: NonNullable<Json>,"execution_detail"?: string | null,"execution_state"?: string | null,"expires_at"?: string,"id"?: string,"message_id"?: number,"owner_id"?: string,"reason"?: string,"state"?: Database["public"]['Enums']["approval_state"],"title"?: string
                   }
                   Relationships: [
                     {
@@ -415,14 +435,14 @@ isOneToOne: false
                   ]
                 },"messages": {
                   Row: {
-                    "attachments": NonNullable<Json>,"body": NonNullable<Json>,"chat_id": string,"created_at": string,"expects_reply": boolean,"flag_reason": string | null,"flagged": boolean,"id": number,"kind": Database["public"]['Enums']["message_kind"],"removed_at": string | null,"removed_reason": string | null,"reply_to": number | null,"sender_agent_id": string | null,"sender_user_id": string | null,"signature": string | null,"text": string | null
+                    "attachments": NonNullable<Json>,"body": NonNullable<Json>,"chat_id": string,"created_at": string,"expects_reply": boolean,"flag_reason": string | null,"flagged": boolean,"id": number,"kind": Database["public"]['Enums']["message_kind"],"owner_client_nonce": string | null,"removed_at": string | null,"removed_reason": string | null,"reply_to": number | null,"sender_agent_id": string | null,"sender_user_id": string | null,"signature": string | null,"text": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "attachments"?: NonNullable<Json>,"body"?: NonNullable<Json>,"chat_id": string,"created_at"?: string,"expects_reply"?: boolean,"flag_reason"?: string | null,"flagged"?: boolean,"id"?: never,"kind": Database["public"]['Enums']["message_kind"],"removed_at"?: string | null,"removed_reason"?: string | null,"reply_to"?: number | null,"sender_agent_id"?: string | null,"sender_user_id"?: string | null,"signature"?: string | null,"text"?: string | null
+                    "attachments"?: NonNullable<Json>,"body"?: NonNullable<Json>,"chat_id": string,"created_at"?: string,"expects_reply"?: boolean,"flag_reason"?: string | null,"flagged"?: boolean,"id"?: never,"kind": Database["public"]['Enums']["message_kind"],"owner_client_nonce"?: string | null,"removed_at"?: string | null,"removed_reason"?: string | null,"reply_to"?: number | null,"sender_agent_id"?: string | null,"sender_user_id"?: string | null,"signature"?: string | null,"text"?: string | null
                   }
                   Update: {
-                    "attachments"?: NonNullable<Json>,"body"?: NonNullable<Json>,"chat_id"?: string,"created_at"?: string,"expects_reply"?: boolean,"flag_reason"?: string | null,"flagged"?: boolean,"id"?: never,"kind"?: Database["public"]['Enums']["message_kind"],"removed_at"?: string | null,"removed_reason"?: string | null,"reply_to"?: number | null,"sender_agent_id"?: string | null,"sender_user_id"?: string | null,"signature"?: string | null,"text"?: string | null
+                    "attachments"?: NonNullable<Json>,"body"?: NonNullable<Json>,"chat_id"?: string,"created_at"?: string,"expects_reply"?: boolean,"flag_reason"?: string | null,"flagged"?: boolean,"id"?: never,"kind"?: Database["public"]['Enums']["message_kind"],"owner_client_nonce"?: string | null,"removed_at"?: string | null,"removed_reason"?: string | null,"reply_to"?: number | null,"sender_agent_id"?: string | null,"sender_user_id"?: string | null,"signature"?: string | null,"text"?: string | null
                   }
                   Relationships: [
                     {
@@ -446,6 +466,110 @@ isOneToOne: false
     },{
       foreignKeyName: "messages_sender_user_id_fkey"
       columns: ["sender_user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"model_rates": {
+                  Row: {
+                    "input_per_million": number,"model": string,"output_per_million": number,"provider": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "input_per_million": number,"model": string,"output_per_million": number,"provider": string,"user_id": string
+                  }
+                  Update: {
+                    "input_per_million"?: number,"model"?: string,"output_per_million"?: number,"provider"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "model_rates_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"model_usage": {
+                  Row: {
+                    "agent_id": string,"chat_id": string | null,"created_at": string,"id": number,"input_tokens": number,"model": string,"output_tokens": number,"provider": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "agent_id": string,"chat_id"?: string | null,"created_at"?: string,"id"?: never,"input_tokens": number,"model": string,"output_tokens": number,"provider": string
+                  }
+                  Update: {
+                    "agent_id"?: string,"chat_id"?: string | null,"created_at"?: string,"id"?: never,"input_tokens"?: number,"model"?: string,"output_tokens"?: number,"provider"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "model_usage_agent_id_fkey"
+      columns: ["agent_id"]
+isOneToOne: false
+      referencedRelation: "agents"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "model_usage_chat_id_fkey"
+      columns: ["chat_id"]
+isOneToOne: false
+      referencedRelation: "chats"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"owner_attachments": {
+                  Row: {
+                    "chat_id": string,"created_at": string,"height": number | null,"id": string,"message_id": number | null,"mime": string,"name": string,"owner_id": string,"size": number,"storage_path": string,"type": string,"width": number | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "chat_id": string,"created_at"?: string,"height"?: number | null,"id"?: string,"message_id"?: number | null,"mime": string,"name": string,"owner_id": string,"size": number,"storage_path": string,"type": string,"width"?: number | null
+                  }
+                  Update: {
+                    "chat_id"?: string,"created_at"?: string,"height"?: number | null,"id"?: string,"message_id"?: number | null,"mime"?: string,"name"?: string,"owner_id"?: string,"size"?: number,"storage_path"?: string,"type"?: string,"width"?: number | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "owner_attachments_chat_id_fkey"
+      columns: ["chat_id"]
+isOneToOne: false
+      referencedRelation: "chats"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "owner_attachments_message_id_fkey"
+      columns: ["message_id"]
+isOneToOne: false
+      referencedRelation: "messages"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "owner_attachments_owner_id_fkey"
+      columns: ["owner_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"owner_channel_state": {
+                  Row: {
+                    "chat_id": string,"last_read_id": number,"notifications": boolean,"saved_ids": (number)[],"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "chat_id": string,"last_read_id"?: number,"notifications"?: boolean,"saved_ids"?: (number)[],"user_id": string
+                  }
+                  Update: {
+                    "chat_id"?: string,"last_read_id"?: number,"notifications"?: boolean,"saved_ids"?: (number)[],"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "owner_channel_state_chat_id_fkey"
+      columns: ["chat_id"]
+isOneToOne: false
+      referencedRelation: "chats"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "owner_channel_state_user_id_fkey"
+      columns: ["user_id"]
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
@@ -484,6 +608,26 @@ isOneToOne: true
                   }
                   Relationships: [
                     
+                  ]
+                },"push_subscriptions": {
+                  Row: {
+                    "auth": string,"created_at": string,"endpoint": string,"id": string,"p256dh": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "auth": string,"created_at"?: string,"endpoint": string,"id"?: string,"p256dh": string,"user_id": string
+                  }
+                  Update: {
+                    "auth"?: string,"created_at"?: string,"endpoint"?: string,"id"?: string,"p256dh"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "push_subscriptions_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"reactions": {
                   Row: {
@@ -615,6 +759,32 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"task_presets": {
+                  Row: {
+                    "agent_id": string,"created_at": string,"enabled": boolean,"id": string,"instructions": string,"interval_minutes": number | null,"last_run_at": string | null,"next_run_at": string | null,"title": string,"user_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "agent_id": string,"created_at"?: string,"enabled"?: boolean,"id"?: string,"instructions": string,"interval_minutes"?: number | null,"last_run_at"?: string | null,"next_run_at"?: string | null,"title": string,"user_id": string
+                  }
+                  Update: {
+                    "agent_id"?: string,"created_at"?: string,"enabled"?: boolean,"id"?: string,"instructions"?: string,"interval_minutes"?: number | null,"last_run_at"?: string | null,"next_run_at"?: string | null,"title"?: string,"user_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "task_presets_agent_id_fkey"
+      columns: ["agent_id"]
+isOneToOne: false
+      referencedRelation: "agents"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "task_presets_user_id_fkey"
+      columns: ["user_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -705,8 +875,16 @@ isOneToOne: false
               "frozen": boolean,"frozen_reason": string,"goal": string,"id": string,"is_public": boolean,"kind": Database["public"]['Enums']["chat_kind"],"last_body": Json,"last_kind": Database["public"]['Enums']["message_kind"],"last_message_at": string,"last_sender_agent_id": string,"last_sender_user_id": string,"last_text": string,"origin": Json,"request_state": string,"request_to": string,"status": Database["public"]['Enums']["task_status"],"title": string,"type": Database["public"]['Enums']["chat_type"]
             }[]
                            },
+"owner_channel_previews":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "chat_id": string,"latest_at": string,"latest_id": number,"new_posts": number,"title": string,"tldr": string
+            }[]
+                           },
 "revoke_grant":
 { Args: { "p_block"?: boolean,"p_grant": string }; Returns: undefined
+                           },
+"run_due_presets":
+{ Args: Record<PropertyKey, never>; Returns: number
                            },
 "search_agents":
 { Args: { "lim"?: number,"q"?: string }; Returns: {
@@ -748,6 +926,9 @@ isOneToOne: false
 { Args: { "lim"?: number,"q": string }; Returns: {
               "chat_id": string,"created_at": string,"id": number,"kind": Database["public"]['Enums']["message_kind"],"text": string,"title": string
             }[]
+                           },
+"send_owner_message":
+{ Args: { "p_attachment_ids": (string)[],"p_chat_id": string,"p_client_nonce": string,"p_text": string }; Returns: number
                            }
           }
           Enums: {
